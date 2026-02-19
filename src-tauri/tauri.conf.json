@@ -1,0 +1,49 @@
+{
+  "productName": "Quill",
+  "version": "0.1.0",
+  "identifier": "app.quill",
+  "build": {
+    "beforeBuildCommand": "",
+    "beforeDevCommand": "",
+    "devUrl": null,
+    "frontendDist": ".."
+  },
+  "app": {
+    "withGlobalTauri": false,
+    "windows": [
+      {
+        "title": "Quill",
+        "width": 900,
+        "height": 720,
+        "resizable": true,
+        "fullscreen": false,
+        "minWidth": 640,
+        "minHeight": 480,
+        "maximized": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png","icons/128x128.png","icons/128x128@2x.png","icons/icon.png","icons/icon.ico"
+    ],
+    "linux": {
+      "appimage": {
+        "bundleMediaFramework": false
+      }
+    },
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      }
+    },
+    "createUpdaterArtifacts": false
+  },
+  "plugins": {}
+}

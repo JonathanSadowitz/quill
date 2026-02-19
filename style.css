@@ -1,0 +1,489 @@
+/* Quill – Ghostwriter-style: minimal UI, menu bar + toolbar, 80-column editor */
+
+:root {
+  --ws-zoom: 1;
+  --ws-bg: #252526;
+  --ws-fg: #d4d4d4;
+  --ws-status-bg: #3c3c3c;
+  --ws-status-fg: #d4d4d4;
+  --ws-ruler-fg: #858585;
+  --ws-menu-fg: #858585;
+  --ws-cursor-color: #d4d4d4;
+  --ws-block-bg: #37373d;
+  --ws-font: "IBM Plex Mono", "Liberation Mono", "Courier New", monospace;
+  --ws-char-width: 1ch;
+  --ws-line-height: 1.2;
+  --ws-cols: 80;
+  --ws-rows: 22;
+  --ws-menubar-bg: #2d2d30;
+  --ws-menubar-fg: #cccccc;
+  --ws-menubar-hover: #094771;
+  --ws-dropdown-bg: #252526;
+  --ws-dropdown-border: #454545;
+  --ws-toolbar-bg: #2d2d30;
+  --ws-toolbar-fg: #cccccc;
+  --ws-toolbar-hover: #094771;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 100vh;
+  min-width: 100vw;
+  background: var(--ws-bg);
+  color: var(--ws-fg);
+  font-family: var(--ws-font);
+  font-size: calc(16px * var(--ws-zoom));
+  overflow: hidden;
+}
+
+#ws-app {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.ws-screen {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  margin: 0;
+  padding: 0.5rem 0.5rem 1.25rem 0.5rem;
+  background: var(--ws-bg);
+  position: relative;
+  box-sizing: border-box;
+}
+
+/* Status line – 80 cols, centered */
+.ws-status {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0 2px;
+  height: 1.5em;
+  width: calc(var(--ws-cols) * var(--ws-char-width));
+  margin-left: auto;
+  margin-right: auto;
+  background: var(--ws-status-bg);
+  color: var(--ws-status-fg);
+  font-weight: bold;
+  white-space: pre;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.ws-status #ws-filename {
+  min-width: 14ch;
+}
+
+.ws-status-wordcount {
+  margin-left: auto;
+  opacity: 0.9;
+}
+
+.ws-status-zoom {
+  margin-left: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.9;
+}
+
+/* Menu bar (Ghostwriter-style) */
+.ws-menubar {
+  flex-shrink: 0;
+  position: relative;
+  background: var(--ws-menubar-bg);
+  color: var(--ws-menubar-fg);
+  font-size: 0.9rem;
+  user-select: none;
+  z-index: 50;
+}
+
+.ws-menubar-inner {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 0 0.25rem;
+  min-height: 2rem;
+  flex-wrap: nowrap;
+}
+
+.ws-menubar-sep {
+  width: 1px;
+  height: 1.2em;
+  margin: 0 0.5rem;
+  background: var(--ws-dropdown-border);
+  flex-shrink: 0;
+}
+
+.ws-menu-item {
+  padding: 0.35rem 0.6rem;
+  cursor: default;
+  border-radius: 2px;
+}
+
+.ws-menu-item:hover,
+.ws-menu-item[aria-expanded="true"] {
+  background: var(--ws-menubar-hover);
+  color: #fff;
+}
+
+/* Dropdowns */
+.ws-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 12rem;
+  padding: 0.25rem 0;
+  background: var(--ws-dropdown-bg);
+  border: 1px solid var(--ws-dropdown-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+}
+
+.ws-dropdown[hidden] {
+  display: none !important;
+}
+
+.ws-dropdown button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  width: 100%;
+  padding: 0.4rem 1rem;
+  border: none;
+  background: transparent;
+  color: var(--ws-fg);
+  font-family: var(--ws-font);
+  font-size: 0.85rem;
+  text-align: left;
+  cursor: default;
+}
+
+.ws-dropdown button:hover {
+  background: var(--ws-menubar-hover);
+  color: #fff;
+}
+
+.ws-menuitem-label {
+  flex: 1;
+}
+
+.ws-menuitem-shortcut {
+  font-size: 0.8em;
+  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-dropdown hr {
+  margin: 0.25rem 0.5rem;
+  border: none;
+  border-top: 1px solid var(--ws-dropdown-border);
+}
+
+/* Toolbar buttons (inline in menu bar) */
+.ws-toolbtn {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ws-toolbar-fg);
+  font-family: var(--ws-font);
+  font-size: 0.85rem;
+  cursor: default;
+}
+
+.ws-toolbtn:hover {
+  background: var(--ws-toolbar-hover);
+  color: #fff;
+  border-color: var(--ws-toolbar-hover);
+}
+
+.ws-toolbtn-inline {
+  margin: 0 0.1rem;
+}
+
+.ws-toolbar-sep {
+  width: 1px;
+  height: 1.2em;
+  margin: 0 0.25rem;
+  background: var(--ws-dropdown-border);
+  flex-shrink: 0;
+}
+
+.ws-toolbar-zoom {
+  min-width: 2.5rem;
+  padding: 0 0.25rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  color: var(--ws-toolbar-fg);
+}
+
+/* Ruler – 80 cols, centered */
+.ws-ruler {
+  padding: 0 2px;
+  height: 1.2em;
+  min-height: 1.2em;
+  color: var(--ws-ruler-fg);
+  flex-shrink: 0;
+  white-space: pre;
+  font-variant-numeric: tabular-nums;
+  width: calc(var(--ws-cols) * var(--ws-char-width));
+  min-width: calc(var(--ws-cols) * var(--ws-char-width));
+  margin-left: auto;
+  margin-right: auto;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* Editor area – 80 cols, centered, scrollable; extra right padding so last char isn’t clipped */
+.ws-content-area {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+.ws-preview-wrap {
+  display: none;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 1rem 2rem 2rem;
+  width: 100%;
+  max-width: 50rem;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+.ws-content-area.preview-mode .ws-editor-wrap { display: none; }
+.ws-content-area.preview-mode .ws-preview-wrap { display: block; }
+.ws-preview {
+  font-family: var(--ws-font);
+  color: var(--ws-fg);
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+.ws-preview h1 { font-size: 1.75rem; margin: 1rem 0 0.5rem; font-weight: bold; }
+.ws-preview h2 { font-size: 1.4rem; margin: 0.9rem 0 0.4rem; font-weight: bold; }
+.ws-preview h3 { font-size: 1.15rem; margin: 0.8rem 0 0.35rem; font-weight: bold; }
+.ws-preview p { margin: 0.5rem 0; }
+.ws-preview ul, .ws-preview ol { margin: 0.5rem 0; padding-left: 1.5rem; }
+.ws-preview code { background: var(--ws-block-bg); padding: 0.15em 0.35em; border-radius: 3px; font-size: 0.9em; }
+.ws-preview pre { background: var(--ws-block-bg); padding: 0.75rem; overflow-x: auto; margin: 0.5rem 0; border-radius: 4px; }
+.ws-preview pre code { background: none; padding: 0; }
+.ws-preview strong { font-weight: bold; }
+.ws-preview em { font-style: italic; }
+.ws-preview a { color: #6eb3f7; }
+.ws-preview a:hover { text-decoration: underline; }
+.ws-preview hr { border: none; border-top: 1px solid var(--ws-dropdown-border); margin: 1rem 0; }
+.ws-dialog-font-row { margin-bottom: 1rem; }
+.ws-font-select {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.95rem;
+  background: var(--ws-status-bg);
+  color: var(--ws-fg);
+  border: 1px solid var(--ws-dropdown-border);
+  border-radius: 4px;
+}
+
+.ws-editor-wrap {
+  flex: 1;
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 0;
+  width: calc(var(--ws-cols) * var(--ws-char-width) + 1ch);
+  min-width: calc(var(--ws-cols) * var(--ws-char-width) + 1ch);
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+  padding-top: 2px;
+  padding-right: 0.1em;
+}
+
+.ws-text {
+  margin: 0;
+  padding: 2px 0.15em 2px 2px;
+  padding-right: 0.25em; /* breathing room so last character isn't cut off */
+  min-height: 100%;
+  white-space: pre;
+  word-wrap: normal;
+  overflow-wrap: normal;
+  font-size: 1rem;
+  line-height: var(--ws-line-height);
+  tab-size: 8;
+  width: calc(var(--ws-cols) * var(--ws-char-width));
+  max-width: 100%;
+  overflow-x: hidden;
+  color: var(--ws-fg);
+  background: transparent;
+  outline: none;
+  border: none;
+  caret-color: transparent;
+  box-sizing: border-box;
+}
+
+.ws-text::before {
+  content: "";
+  display: table;
+}
+
+/* Block highlight */
+.ws-text .ws-block {
+  background: var(--ws-block-bg);
+}
+
+/* Cursor – drawn by JS as a block cursor */
+.ws-cursor {
+  position: absolute;
+  width: var(--ws-char-width);
+  height: 1em;
+  background: var(--ws-cursor-color);
+  opacity: 0.9;
+  pointer-events: none;
+  top: 0;
+  left: 0;
+  transition: none;
+}
+
+.ws-cursor.blink {
+  animation: ws-blink 1s step-end infinite;
+}
+
+@keyframes ws-blink {
+  50% { opacity: 0.3; }
+}
+
+/* No border/outline on 80-column editor area */
+#ws-text:focus {
+  outline: none;
+}
+
+/* New document / unsaved changes dialog */
+.ws-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 110;
+  padding: 1rem;
+}
+.ws-dialog-overlay[aria-hidden="true"] {
+  display: none;
+}
+.ws-dialog-overlay[aria-hidden="false"] {
+  display: flex;
+}
+.ws-dialog-box {
+  background: var(--ws-bg);
+  border: 1px solid var(--ws-dropdown-border);
+  color: var(--ws-fg);
+  font-family: var(--ws-font);
+  min-width: 20rem;
+  max-width: 28rem;
+  padding: 1.25rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+.ws-dialog-title {
+  font-weight: bold;
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+}
+.ws-dialog-message {
+  margin: 0 0 1.25rem 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--ws-fg);
+}
+.ws-dialog-buttons {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.ws-dialog-btn {
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--ws-dropdown-border);
+  border-radius: 4px;
+  background: var(--ws-status-bg);
+  color: var(--ws-fg);
+  font-family: var(--ws-font);
+  font-size: 0.9rem;
+  cursor: default;
+}
+.ws-dialog-btn:hover {
+  background: var(--ws-menubar-hover);
+  color: #fff;
+  border-color: var(--ws-menubar-hover);
+}
+.ws-dialog-btn-primary {
+  background: var(--ws-menubar-hover);
+  color: #fff;
+  border-color: var(--ws-menubar-hover);
+}
+
+/* Help modal */
+.ws-help-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 1rem;
+}
+.ws-help-overlay[aria-hidden="true"] {
+  display: none;
+}
+.ws-help-overlay[aria-hidden="false"] {
+  display: flex;
+}
+.ws-help-box {
+  background: var(--ws-bg);
+  border: 2px solid var(--ws-fg);
+  color: var(--ws-fg);
+  font-family: var(--ws-font);
+  max-width: 42rem;
+  max-height: 85vh;
+  overflow: auto;
+  box-shadow: 0 0 30px var(--ws-fg);
+}
+.ws-help-header {
+  background: var(--ws-status-bg);
+  color: var(--ws-status-fg);
+  padding: 0.5rem 0.75rem;
+  font-weight: bold;
+}
+
+.ws-help-notation {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.85em;
+  opacity: 0.9;
+}
+.ws-help-body {
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.ws-help-body section {
+  margin-bottom: 0.75rem;
+}
+.ws-help-body section:last-child {
+  margin-bottom: 0;
+}

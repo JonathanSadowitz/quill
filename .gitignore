@@ -1,0 +1,16 @@
+# Rust / Cargo
+src-tauri/target/
+target/
+**/*.rs.bk
+Cargo.lock
+
+# Tauri
+src-tauri/WixTools/
+src-tauri/gen/
+
+# Icons (optional; uncomment if you commit generated icons)
+# src-tauri/icons/
+
+# OS
+.DS_Store
+Thumbs.db
