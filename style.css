@@ -81,10 +81,6 @@ html, body {
   box-sizing: border-box;
 }
 
-.ws-status #ws-filename {
-  min-width: 14ch;
-}
-
 .ws-status-wordcount {
   margin-left: auto;
   opacity: 0.9;
@@ -341,11 +337,6 @@ html, body {
   display: table;
 }
 
-/* Block highlight */
-.ws-text .ws-block {
-  background: var(--ws-block-bg);
-}
-
 /* Cursor – drawn by JS as a block cursor */
 .ws-cursor {
   position: absolute;
@@ -437,53 +428,3 @@ html, body {
   border-color: var(--ws-menubar-hover);
 }
 
-/* Help modal */
-.ws-help-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  padding: 1rem;
-}
-.ws-help-overlay[aria-hidden="true"] {
-  display: none;
-}
-.ws-help-overlay[aria-hidden="false"] {
-  display: flex;
-}
-.ws-help-box {
-  background: var(--ws-bg);
-  border: 2px solid var(--ws-fg);
-  color: var(--ws-fg);
-  font-family: var(--ws-font);
-  max-width: 42rem;
-  max-height: 85vh;
-  overflow: auto;
-  box-shadow: 0 0 30px var(--ws-fg);
-}
-.ws-help-header {
-  background: var(--ws-status-bg);
-  color: var(--ws-status-fg);
-  padding: 0.5rem 0.75rem;
-  font-weight: bold;
-}
-
-.ws-help-notation {
-  margin: 0 0 0.5rem 0;
-  font-size: 0.85em;
-  opacity: 0.9;
-}
-.ws-help-body {
-  padding: 0.75rem 1rem;
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-.ws-help-body section {
-  margin-bottom: 0.75rem;
-}
-.ws-help-body section:last-child {
-  margin-bottom: 0;
-}
