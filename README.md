@@ -57,7 +57,7 @@ cargo tauri dev
 cargo tauri build
 ```
 
-- **Linux:** output in `src-tauri/target/release/bundle/` (e.g. `.deb`, `.AppImage`, or the binary). See [BUILD-APPIMAGE.md](BUILD-APPIMAGE.md) for AppImage build steps on CachyOS/Arch.
+- **Linux:** output in `target/release/` (binary) and `target/release/bundle/` (e.g. `.deb`, `.rpm`). See [BUILD-LINUX.md](BUILD-LINUX.md) for build and run steps on CachyOS/Arch.
 - **Windows:** output in `src-tauri/target/release/bundle/msi/` or run `quill.exe` from `src-tauri/target/release/`.
 
 To build a Windows executable from Linux, use cross-compilation (e.g. `cross`) or build on Windows or in CI.
