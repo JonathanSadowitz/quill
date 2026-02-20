@@ -16,9 +16,11 @@
       <div class="ws-menubar-inner">
         <div class="ws-menubar-left">
           <div class="ws-menu-item" data-menu="file" aria-haspopup="true" aria-expanded="false">File</div>
+          <div class="ws-menu-item" data-menu="edit" aria-haspopup="true" aria-expanded="false">Edit</div>
           <div class="ws-menu-item" data-menu="view" aria-haspopup="true" aria-expanded="false">View</div>
         </div>
         <div class="ws-menubar-right">
+          <span id="ws-unsaved" class="ws-status-unsaved" hidden>•</span>
           <span id="ws-wordcount" class="ws-status-wordcount">0 words</span>
           <span id="ws-zoom-value" class="ws-status-zoom">100%</span>
         </div>
@@ -32,6 +34,18 @@
         <button type="button" role="menuitem" data-action="new"><span class="ws-menuitem-label">New</span><span class="ws-menuitem-shortcut">Ctrl+N</span></button>
         <hr>
         <button type="button" role="menuitem" data-action="exit"><span class="ws-menuitem-label">Exit</span><span class="ws-menuitem-shortcut">Alt+Q</span></button>
+      </div>
+      <div id="ws-dropdown-edit" class="ws-dropdown" role="menu" aria-label="Edit menu" hidden>
+        <button type="button" role="menuitem" data-action="undo"><span class="ws-menuitem-label">Undo</span><span class="ws-menuitem-shortcut">Ctrl+Z</span></button>
+        <button type="button" role="menuitem" data-action="redo"><span class="ws-menuitem-label">Redo</span><span class="ws-menuitem-shortcut">Ctrl+Shift+Z</span></button>
+        <hr>
+        <button type="button" role="menuitem" data-action="cut"><span class="ws-menuitem-label">Cut</span><span class="ws-menuitem-shortcut">Ctrl+X</span></button>
+        <button type="button" role="menuitem" data-action="copy"><span class="ws-menuitem-label">Copy</span><span class="ws-menuitem-shortcut">Ctrl+C</span></button>
+        <button type="button" role="menuitem" data-action="paste"><span class="ws-menuitem-label">Paste</span><span class="ws-menuitem-shortcut">Ctrl+V</span></button>
+        <hr>
+        <button type="button" role="menuitem" data-action="selectAll"><span class="ws-menuitem-label">Select All</span><span class="ws-menuitem-shortcut">Ctrl+A</span></button>
+        <hr>
+        <button type="button" role="menuitem" data-action="find"><span class="ws-menuitem-label">Find…</span><span class="ws-menuitem-shortcut">Ctrl+F</span></button>
       </div>
       <div id="ws-dropdown-view" class="ws-dropdown" role="menu" aria-label="View menu" hidden>
         <button type="button" role="menuitem" data-action="togglePreview"><span class="ws-menuitem-label">Preview</span><span class="ws-menuitem-shortcut">Ctrl+P</span></button>
@@ -128,6 +142,33 @@
         <div class="ws-dialog-buttons">
           <button type="button" class="ws-dialog-btn ws-dialog-btn-primary" data-exit-choice="discard">Discard</button>
           <button type="button" class="ws-dialog-btn" data-exit-choice="cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+    <!-- Find / Replace -->
+    <div id="ws-find-dialog" class="ws-dialog-overlay" role="dialog" aria-label="Find" aria-hidden="true">
+      <div class="ws-dialog-box ws-dialog-find">
+        <div class="ws-dialog-title">Find</div>
+        <div class="ws-dialog-find-row">
+          <label for="ws-find-input" class="ws-dialog-label">Find:</label>
+          <input type="text" id="ws-find-input" class="ws-dialog-input" placeholder="Search…" autocomplete="off">
+        </div>
+        <div class="ws-dialog-find-row">
+          <label for="ws-replace-input" class="ws-dialog-label">Replace:</label>
+          <input type="text" id="ws-replace-input" class="ws-dialog-input" placeholder="Replace with…" autocomplete="off">
+        </div>
+        <div class="ws-dialog-find-row">
+          <label class="ws-dialog-checkbox-label">
+            <input type="checkbox" id="ws-find-case" class="ws-dialog-checkbox">
+            <span>Case sensitive</span>
+          </label>
+        </div>
+        <div class="ws-dialog-buttons ws-dialog-buttons-find">
+          <button type="button" class="ws-dialog-btn" data-find="next">Find Next</button>
+          <button type="button" class="ws-dialog-btn" data-find="prev">Find Previous</button>
+          <button type="button" class="ws-dialog-btn" data-find="replace">Replace</button>
+          <button type="button" class="ws-dialog-btn" data-find="replaceAll">Replace All</button>
+          <button type="button" class="ws-dialog-btn ws-dialog-btn-primary" data-find="close">Close</button>
         </div>
       </div>
     </div>

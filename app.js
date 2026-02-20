@@ -15,6 +15,13 @@
   let dirty = false;
   let currentFilePath = null;
 
+  const MAX_UNDO = 500;
+  let undoHistory = [];
+  let redoStack = [];
+
+  let anchorRow = 0;
+  let anchorCol = 0;
+
   const $ = (id) => document.getElementById(id);
   const ruler = $('ws-ruler-content');
   const textEl = $('ws-text');
@@ -34,6 +41,149 @@
     return Math.max(0, Math.min(c, ln));
   }
 
+  function hasSelection() {
+    return anchorRow !== row || anchorCol !== col;
+  }
+
+  function selectionBounds() {
+    let r0 = anchorRow;
+    let c0 = anchorCol;
+    let r1 = row;
+    let c1 = col;
+    if (r0 > r1 || (r0 === r1 && c0 > c1)) {
+      [r0, c0, r1, c1] = [r1, c1, r0, c0];
+    }
+    return { startRow: r0, startCol: c0, endRow: r1, endCol: c1 };
+  }
+
+  function clearSelection() {
+    anchorRow = row;
+    anchorCol = col;
+  }
+
+  function getSelectedText() {
+    if (!hasSelection()) return '';
+    const { startRow, startCol, endRow, endCol } = selectionBounds();
+    if (startRow === endRow) {
+      return (lines[startRow] || '').slice(startCol, endCol);
+    }
+    const parts = [(lines[startRow] || '').slice(startCol)];
+    for (let r = startRow + 1; r < endRow; r++) parts.push(lines[r] || '');
+    parts.push((lines[endRow] || '').slice(0, endCol));
+    return parts.join('\n');
+  }
+
+  function deleteSelection() {
+    if (!hasSelection()) return;
+    const { startRow, startCol, endRow, endCol } = selectionBounds();
+    if (startRow === endRow) {
+      const ln = lines[startRow] || '';
+      setLine(startRow, ln.slice(0, startCol) + ln.slice(endCol));
+    } else {
+      const startLn = (lines[startRow] || '').slice(0, startCol);
+      const endLn = (lines[endRow] || '').slice(endCol);
+      setLine(startRow, startLn + endLn);
+      lines.splice(startRow + 1, endRow - startRow);
+    }
+    row = startRow;
+    col = startCol;
+    clearSelection();
+  }
+
+  function setSelectionToCursor() {
+    anchorRow = row;
+    anchorCol = col;
+  }
+
+  function selectAll() {
+    anchorRow = 0;
+    anchorCol = 0;
+    row = lines.length - 1;
+    col = (lines[row] || '').length;
+  }
+
+  async function copyToClipboard() {
+    const text = getSelectedText();
+    if (text && navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (_) {}
+    }
+  }
+
+  async function cutToClipboard() {
+    const text = getSelectedText();
+    if (text && navigator.clipboard && navigator.clipboard.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        saveStateForUndo();
+        deleteSelection();
+        render();
+      } catch (_) {}
+    }
+  }
+
+  async function pasteFromClipboard() {
+    if (!navigator.clipboard || !navigator.clipboard.readText) return;
+    try {
+      const text = await navigator.clipboard.readText();
+      if (!text) return;
+      saveStateForUndo();
+      if (hasSelection()) deleteSelection();
+      for (let i = 0; i < text.length; i++) {
+        if (text[i] === '\n') doNewLine();
+        else doInsertChar(text[i]);
+      }
+      clearSelection();
+      render();
+    } catch (_) {}
+  }
+
+  function saveStateForUndo() {
+    redoStack = [];
+    undoHistory.push({
+      lines: lines.map((ln) => ln.slice()),
+      row,
+      col
+    });
+    if (undoHistory.length > MAX_UNDO) undoHistory.shift();
+  }
+
+  function restoreState(state) {
+    lines = state.lines.map((ln) => ln.slice());
+    if (lines.length === 0) lines = [''];
+    row = Math.min(state.row, lines.length - 1);
+    col = clampCol(row, state.col);
+    anchorRow = row;
+    anchorCol = col;
+  }
+
+  function undo() {
+    if (undoHistory.length === 0) return;
+    redoStack.push({
+      lines: lines.map((ln) => ln.slice()),
+      row,
+      col
+    });
+    const state = undoHistory.pop();
+    restoreState(state);
+    dirty = true;
+    render();
+  }
+
+  function redo() {
+    if (redoStack.length === 0) return;
+    undoHistory.push({
+      lines: lines.map((ln) => ln.slice()),
+      row,
+      col
+    });
+    const state = redoStack.pop();
+    restoreState(state);
+    dirty = true;
+    render();
+  }
+
   function renderRuler() {
     const left = 1, right = COLS;
     let s = '';
@@ -48,12 +198,24 @@
 
   function render() {
     const frag = document.createDocumentFragment();
+    const sel = hasSelection() ? selectionBounds() : null;
     for (let r = 0; r < lines.length; r++) {
       const ln = lines[r] || '';
-      const span = document.createElement('span');
-      span.textContent = ln;
-      span.dataset.line = r;
-      frag.appendChild(span);
+      const lineSpan = document.createElement('span');
+      lineSpan.dataset.line = r;
+      if (sel && r >= sel.startRow && r <= sel.endRow) {
+        const startC = r === sel.startRow ? sel.startCol : 0;
+        const endC = r === sel.endRow ? sel.endCol : ln.length;
+        if (startC > 0) lineSpan.appendChild(document.createTextNode(ln.slice(0, startC)));
+        const selSpan = document.createElement('span');
+        selSpan.className = 'ws-selection';
+        selSpan.textContent = ln.slice(startC, endC);
+        lineSpan.appendChild(selSpan);
+        if (endC < ln.length) lineSpan.appendChild(document.createTextNode(ln.slice(endC)));
+      } else {
+        lineSpan.textContent = ln;
+      }
+      frag.appendChild(lineSpan);
       frag.appendChild(document.createTextNode('\n'));
     }
     textEl.innerHTML = '';
@@ -174,17 +336,39 @@
   }
 
   // Get (row, col) from a mouse event for click-to-position cursor
+  function getLineSpanAt(clientX, clientY) {
+    const wrap = textEl.parentElement;
+    const el = document.elementFromPoint(clientX, clientY);
+    if (!el) return null;
+    const inEditor = textEl.contains(el) || (wrap && wrap.contains(el));
+    if (!inEditor) return null;
+    if (el.nodeType === 1 && el.closest) {
+      const lineSpan = el.closest('[data-line]');
+      if (lineSpan && textEl.contains(lineSpan)) return lineSpan;
+    }
+    const spans = textEl.querySelectorAll('[data-line]');
+    for (let i = 0; i < spans.length; i++) {
+      const rect = spans[i].getBoundingClientRect();
+      if (clientY >= rect.top && clientY <= rect.bottom) return spans[i];
+      if (clientY < rect.top) return spans[i];
+    }
+    if (spans.length) return spans[spans.length - 1];
+    return null;
+  }
+
   function getCellFromMouseEvent(e) {
-    const lineSpan = e.target.closest('[data-line]');
-    if (!lineSpan) return null;
-    const r = parseInt(lineSpan.dataset.line, 10);
+    const lineSpan = e.target && e.target.closest ? e.target.closest('[data-line]') : null;
+    const lineSpanAtPoint = getLineSpanAt(e.clientX, e.clientY);
+    const span = lineSpan || lineSpanAtPoint;
+    if (!span) return null;
+    const r = parseInt(span.dataset.line, 10);
     if (Number.isNaN(r) || r < 0 || r >= lines.length) return null;
     const ln = lines[r] || '';
-    const lineRect = lineSpan.getBoundingClientRect();
+    const lineRect = span.getBoundingClientRect();
     const offsetX = e.clientX - lineRect.left;
     const measure = document.createElement('span');
     measure.style.cssText = 'visibility:hidden;position:absolute;white-space:pre;font:inherit;';
-    lineSpan.appendChild(measure);
+    span.appendChild(measure);
     let c = 0;
     for (; c <= ln.length; c++) {
       measure.textContent = ln.slice(0, c);
@@ -231,6 +415,9 @@
     const wc = wordCount();
     const wcEl = $('ws-wordcount');
     if (wcEl) wcEl.textContent = wc === 1 ? '1 word' : wc + ' words';
+    const unsavedEl = $('ws-unsaved');
+    if (unsavedEl) unsavedEl.hidden = !dirty;
+    updateWindowTitle();
   }
 
   function doClearForNew() {
@@ -240,7 +427,8 @@
 
   function updateWindowTitle() {
     if (typeof document !== 'undefined' && document.title !== undefined) {
-      document.title = currentFilePath ? currentFilePath.replace(/^.*[/\\]/, '') + ' – Quill' : 'Quill';
+      const name = currentFilePath ? currentFilePath.replace(/^.*[/\\]/, '') + ' – Quill' : 'Quill';
+      document.title = dirty ? '• ' + name : name;
     }
   }
 
@@ -441,11 +629,10 @@
     return lastSpace > 0 ? lastSpace : COLS;
   }
 
-  function insertChar(ch) {
+  function doInsertChar(ch) {
     const ln = line();
     setLine(row, ln.slice(0, col) + ch + ln.slice(col));
     col++;
-    /* Word wrap at 80 cols: break at word boundary so whole words move to next line */
     let current = lines[row] || '';
     while (current.length > COLS) {
       const br = wrapBreakPoint(current);
@@ -461,10 +648,27 @@
       current = lines[row] || '';
     }
     dirty = true;
+  }
+
+  function insertChar(ch) {
+    saveStateForUndo();
+    doInsertChar(ch);
+    clearSelection();
     render();
   }
 
+  function doNewLine() {
+    const ln = line();
+    const rest = ln.slice(col);
+    setLine(row, ln.slice(0, col));
+    lines.splice(row + 1, 0, rest);
+    row++;
+    col = 0;
+    dirty = true;
+  }
+
   function deleteCharForward() {
+    saveStateForUndo();
     const ln = line();
     if (col < ln.length) {
       setLine(row, ln.slice(0, col) + ln.slice(col + 1));
@@ -478,6 +682,7 @@
   }
 
   function deleteCharBackward() {
+    saveStateForUndo();
     if (col > 0) {
       const ln = line();
       setLine(row, ln.slice(0, col - 1) + ln.slice(col));
@@ -495,17 +700,14 @@
   }
 
   function newLine() {
-    const ln = line();
-    const rest = ln.slice(col);
-    setLine(row, ln.slice(0, col));
-    lines.splice(row + 1, 0, rest);
-    row++;
-    col = 0;
-    dirty = true;
+    saveStateForUndo();
+    doNewLine();
+    clearSelection();
     render();
   }
 
-  function moveLeft() {
+  function moveLeft(extend) {
+    if (!extend) clearSelection();
     if (col > 0) col--;
     else if (row > 0) {
       row--;
@@ -514,7 +716,8 @@
     render();
   }
 
-  function moveRight() {
+  function moveRight(extend) {
+    if (!extend) clearSelection();
     const ln = line();
     if (col < ln.length) col++;
     else if (row < lines.length - 1) {
@@ -524,7 +727,8 @@
     render();
   }
 
-  function moveUp() {
+  function moveUp(extend) {
+    if (!extend) clearSelection();
     if (row > 0) {
       row--;
       col = clampCol(row, col);
@@ -532,7 +736,8 @@
     }
   }
 
-  function moveDown() {
+  function moveDown(extend) {
+    if (!extend) clearSelection();
     if (row < lines.length - 1) {
       row++;
       col = clampCol(row, col);
@@ -540,23 +745,27 @@
     }
   }
 
-  function lineStart() {
+  function lineStart(extend) {
+    if (!extend) clearSelection();
     col = 0;
     render();
   }
 
-  function lineEnd() {
+  function lineEnd(extend) {
+    if (!extend) clearSelection();
     col = (line()).length;
     render();
   }
 
-  function docStart() {
+  function docStart(extend) {
+    if (!extend) clearSelection();
     row = 0;
     col = 0;
     render();
   }
 
-  function docEnd() {
+  function docEnd(extend) {
+    if (!extend) clearSelection();
     row = lines.length - 1;
     col = (line()).length;
     render();
@@ -590,11 +799,15 @@
   }
 
   function setFullText(s) {
+    undoHistory = [];
+    redoStack = [];
     const raw = s.split('\n');
     lines = wrapLongLines(raw);
     if (lines.length === 0) lines = [''];
     row = 0;
     col = 0;
+    anchorRow = 0;
+    anchorCol = 0;
     dirty = false;
     render();
   }
@@ -677,8 +890,129 @@
     }
   }
 
-  // ----- Find (simple) -----
-  // (Find functionality removed)
+  // ----- Find / Replace -----
+  function offsetFor(r, c) {
+    let off = 0;
+    for (let i = 0; i < r; i++) off += (lines[i] || '').length + 1;
+    return off + c;
+  }
+
+  function posForOffset(offset) {
+    let off = 0;
+    for (let r = 0; r < lines.length; r++) {
+      const len = (lines[r] || '').length;
+      const lineEnd = off + len;
+      if (offset <= lineEnd) return { row: r, col: Math.min(offset - off, len) };
+      off = lineEnd + 1;
+    }
+    const last = lines.length - 1;
+    return { row: last, col: (lines[last] || '').length };
+  }
+
+  function findNext(forward) {
+    const findInput = $('ws-find-input');
+    const caseCheck = $('ws-find-case');
+    const query = findInput ? findInput.value : '';
+    if (!query) return false;
+    const fullText = getFullText();
+    const caseSensitive = caseCheck && caseCheck.checked;
+    const searchText = caseSensitive ? fullText : fullText.toLowerCase();
+    const searchQuery = caseSensitive ? query : query.toLowerCase();
+    const curOffset = offsetFor(row, col);
+    let start = -1;
+    if (forward) {
+      const idx = searchText.indexOf(searchQuery, curOffset);
+      if (idx === -1 && curOffset > 0) {
+        const wrap = searchText.indexOf(searchQuery, 0);
+        if (wrap !== -1) start = wrap;
+      } else if (idx !== -1) start = idx;
+    } else {
+      const before = searchText.slice(0, curOffset);
+      const idx = before.lastIndexOf(searchQuery);
+      if (idx !== -1) start = idx;
+    }
+    if (start === -1) return false;
+    const end = start + query.length;
+    const p0 = posForOffset(start);
+    const p1 = posForOffset(end);
+    anchorRow = p0.row;
+    anchorCol = p0.col;
+    row = p1.row;
+    col = p1.col;
+    render();
+    const lineEl = textEl.querySelector(`[data-line="${p0.row}"]`);
+    if (lineEl) lineEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    return true;
+  }
+
+  function replaceOne() {
+    const findInput = $('ws-find-input');
+    const replaceInput = $('ws-replace-input');
+    const caseCheck = $('ws-find-case');
+    const query = findInput ? findInput.value : '';
+    const replacement = replaceInput ? replaceInput.value : '';
+    if (!query) return false;
+    const selected = getSelectedText();
+    const caseSensitive = caseCheck && caseCheck.checked;
+    const matches = caseSensitive
+      ? selected === query
+      : selected.toLowerCase() === query.toLowerCase();
+    if (!matches) return findNext(true);
+    saveStateForUndo();
+    deleteSelection();
+    for (let i = 0; i < replacement.length; i++) {
+      if (replacement[i] === '\n') doNewLine();
+      else doInsertChar(replacement[i]);
+    }
+    clearSelection();
+    dirty = true;
+    render();
+    return findNext(true);
+  }
+
+  function replaceAll() {
+    const findInput = $('ws-find-input');
+    const replaceInput = $('ws-replace-input');
+    const caseCheck = $('ws-find-case');
+    const query = findInput ? findInput.value : '';
+    const replacement = replaceInput ? replaceInput.value : '';
+    if (!query) return;
+    const fullText = getFullText();
+    const caseSensitive = caseCheck && caseCheck.checked;
+    const searchText = caseSensitive ? fullText : fullText.toLowerCase();
+    const searchQuery = caseSensitive ? query : query.toLowerCase();
+    let count = 0;
+    let idx = 0;
+    const parts = [];
+    while (true) {
+      const found = searchText.indexOf(searchQuery, idx);
+      if (found === -1) break;
+      parts.push(fullText.slice(idx, found));
+      parts.push(replacement);
+      idx = found + query.length;
+      count++;
+    }
+    if (count === 0) return;
+    parts.push(fullText.slice(idx));
+    saveStateForUndo();
+    setFullText(parts.join(''));
+    dirty = true;
+  }
+
+  function openFindDialog() {
+    const dialog = $('ws-find-dialog');
+    const findInput = $('ws-find-input');
+    if (!dialog || !findInput) return;
+    dialog.setAttribute('aria-hidden', 'false');
+    findInput.focus();
+    findInput.select();
+  }
+
+  function closeFindDialog() {
+    const dialog = $('ws-find-dialog');
+    if (dialog) dialog.setAttribute('aria-hidden', 'true');
+    textEl.focus();
+  }
 
   // ----- Zoom -----
   const ZOOM_MIN = 0.5;
@@ -720,10 +1054,26 @@
     const ctrl = e.ctrlKey;
     const shift = e.shiftKey;
 
+    // Undo / Redo
+    if (ctrl && key === 'z' && !shift) {
+      e.preventDefault();
+      undo();
+      return;
+    }
+    if (ctrl && (key === 'y' || (key === 'z' && shift))) {
+      e.preventDefault();
+      redo();
+      return;
+    }
     // Menu shortcuts (^X = Ctrl+X, M-X = Alt+X)
     if (ctrl && key === 'n' && !shift) {
       e.preventDefault();
       newDocument();
+      return;
+    }
+    if (ctrl && key === 'f') {
+      e.preventDefault();
+      openFindDialog();
       return;
     }
     if (ctrl && key === 'o') {
@@ -763,68 +1113,126 @@
       return;
     }
 
+    if (ctrl && key === 'a') {
+      e.preventDefault();
+      selectAll();
+      render();
+      return;
+    }
+    if (ctrl && key === 'c') {
+      e.preventDefault();
+      copyToClipboard();
+      return;
+    }
+    if (ctrl && key === 'x') {
+      e.preventDefault();
+      cutToClipboard();
+      return;
+    }
+    if (ctrl && key === 'v') {
+      e.preventDefault();
+      pasteFromClipboard();
+      return;
+    }
+
     switch (key) {
       case 'Backspace':
         e.preventDefault();
-        deleteCharBackward();
+        if (hasSelection()) {
+          saveStateForUndo();
+          deleteSelection();
+          render();
+        } else {
+          deleteCharBackward();
+        }
         return;
       case 'Delete':
         e.preventDefault();
-        deleteCharForward();
+        if (hasSelection()) {
+          saveStateForUndo();
+          deleteSelection();
+          render();
+        } else {
+          deleteCharForward();
+        }
         return;
       case 'Enter':
         e.preventDefault();
-        newLine();
+        if (hasSelection()) {
+          saveStateForUndo();
+          deleteSelection();
+          doNewLine();
+          clearSelection();
+          render();
+        } else {
+          newLine();
+        }
         return;
       case 'Tab':
         e.preventDefault();
+        if (hasSelection()) {
+          saveStateForUndo();
+          deleteSelection();
+        }
         const spaces = TAB - (col % TAB);
         insertChar(' '.repeat(spaces));
         return;
       case 'ArrowLeft':
         e.preventDefault();
-        moveLeft();
+        moveLeft(shift);
         return;
       case 'ArrowRight':
         e.preventDefault();
-        moveRight();
+        moveRight(shift);
         return;
       case 'ArrowUp':
         e.preventDefault();
-        moveUp();
+        moveUp(shift);
         return;
       case 'ArrowDown':
         e.preventDefault();
-        moveDown();
+        moveDown(shift);
         return;
       case 'Home':
         e.preventDefault();
-        if (ctrl) docStart();
-        else lineStart();
+        if (ctrl) docStart(shift);
+        else lineStart(shift);
         return;
       case 'End':
         e.preventDefault();
-        if (ctrl) docEnd();
-        else lineEnd();
+        if (ctrl) docEnd(shift);
+        else lineEnd(shift);
         return;
       case 'PageUp':
         e.preventDefault();
-        for (let i = 0; i < 20; i++) moveUp();
+        if (!shift) clearSelection();
+        for (let i = 0; i < 20; i++) moveUp(false);
+        render();
         return;
       case 'PageDown':
         e.preventDefault();
-        for (let i = 0; i < 20; i++) moveDown();
+        if (!shift) clearSelection();
+        for (let i = 0; i < 20; i++) moveDown(false);
+        render();
         return;
     }
 
     if (key.length === 1 && !e.altKey && !e.metaKey) {
       e.preventDefault();
-      insertChar(key);
+      if (hasSelection()) {
+        saveStateForUndo();
+        deleteSelection();
+        doInsertChar(key);
+        clearSelection();
+        render();
+      } else {
+        insertChar(key);
+      }
     }
   };
 
   // Global shortcuts: work even when editor doesn't have focus (capture phase)
-  const MENU_ORDER = ['file', 'view'];
+  const MENU_ORDER = ['file', 'edit', 'view'];
   let menuBarFocused = false;
   let focusedMenuIndex = 0;
 
@@ -860,11 +1268,18 @@
       const newDialog = $('ws-new-dialog');
       const exitDialog = $('ws-exit-dialog');
       const openDialog = $('ws-open-dialog');
+      const findDialog = $('ws-find-dialog');
       if (fontDialog && fontDialog.getAttribute('aria-hidden') === 'false') return;
       if (themeDialog && themeDialog.getAttribute('aria-hidden') === 'false') return;
       if (newDialog && newDialog.getAttribute('aria-hidden') === 'false') return;
       if (exitDialog && exitDialog.getAttribute('aria-hidden') === 'false') return;
       if (openDialog && openDialog.getAttribute('aria-hidden') === 'false') return;
+      if (findDialog && findDialog.getAttribute('aria-hidden') === 'false') {
+        closeFindDialog();
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       closeAllMenus();
       clearMenuBarKeyboardFocus();
       textEl.focus();
@@ -879,7 +1294,8 @@
     const openDialogOpen = $('ws-open-dialog') && $('ws-open-dialog').getAttribute('aria-hidden') === 'false';
     const fontDialogOpen = $('ws-font-dialog') && $('ws-font-dialog').getAttribute('aria-hidden') === 'false';
     const themeDialogOpen = $('ws-theme-dialog') && $('ws-theme-dialog').getAttribute('aria-hidden') === 'false';
-    const modalOpen = newDialogOpen || exitDialogOpen || openDialogOpen || fontDialogOpen || themeDialogOpen;
+    const findDialogOpen = $('ws-find-dialog') && $('ws-find-dialog').getAttribute('aria-hidden') === 'false';
+    const modalOpen = newDialogOpen || exitDialogOpen || openDialogOpen || fontDialogOpen || themeDialogOpen || findDialogOpen;
 
     // When a dropdown is open: Arrow Up/Down navigate items; Left/Right switch menus; Enter executes
     if (!modalOpen) {
@@ -981,6 +1397,12 @@
       newDocument();
       return;
     }
+    if (ctrl && key === 'f') {
+      e.preventDefault();
+      e.stopPropagation();
+      openFindDialog();
+      return;
+    }
     if (ctrl && key === 'o') {
       e.preventDefault();
       e.stopPropagation();
@@ -1030,6 +1452,43 @@
       togglePreview();
       return;
     }
+    if (ctrl && key === 'z' && !shift) {
+      e.preventDefault();
+      e.stopPropagation();
+      undo();
+      return;
+    }
+    if (ctrl && (key === 'y' || (key === 'z' && shift))) {
+      e.preventDefault();
+      e.stopPropagation();
+      redo();
+      return;
+    }
+    if (ctrl && key === 'a') {
+      e.preventDefault();
+      e.stopPropagation();
+      selectAll();
+      render();
+      return;
+    }
+    if (ctrl && key === 'c') {
+      e.preventDefault();
+      e.stopPropagation();
+      copyToClipboard();
+      return;
+    }
+    if (ctrl && key === 'x') {
+      e.preventDefault();
+      e.stopPropagation();
+      cutToClipboard();
+      return;
+    }
+    if (ctrl && key === 'v') {
+      e.preventDefault();
+      e.stopPropagation();
+      pasteFromClipboard();
+      return;
+    }
   }
   document.addEventListener('keydown', globalShortcutHandler, true);
 
@@ -1038,9 +1497,24 @@
     if (e.button !== 0) return;
     const cell = getCellFromMouseEvent(e);
     if (cell == null) return;
-    row = cell.row;
-    col = cell.col;
+    anchorRow = row = cell.row;
+    anchorCol = col = cell.col;
     render();
+    const onMouseMove = (e2) => {
+      const c = getCellFromMouseEvent(e2);
+      if (c != null && (c.row !== row || c.col !== col)) {
+        row = c.row;
+        col = c.col;
+        render();
+      }
+    };
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      textEl.focus();
+    };
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
   });
 
   textEl.addEventListener('mouseup', (e) => {
@@ -1151,9 +1625,35 @@
     });
   })();
 
+  (function initFindDialog() {
+    const dialog = $('ws-find-dialog');
+    if (!dialog) return;
+    dialog.querySelectorAll('button[data-find]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.find;
+        if (action === 'next') findNext(true);
+        else if (action === 'prev') findNext(false);
+        else if (action === 'replace') replaceOne();
+        else if (action === 'replaceAll') replaceAll();
+        else if (action === 'close') closeFindDialog();
+      });
+    });
+    const findInput = $('ws-find-input');
+    if (findInput) {
+      findInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          findNext(true);
+        }
+      });
+    }
+    dialog.addEventListener('click', (e) => { if (e.target === dialog) closeFindDialog(); });
+  })();
+
   // ----- Menu bar & toolbar (Ghostwriter-style point-and-click) -----
   const dropdowns = {
     file: $('ws-dropdown-file'),
+    edit: $('ws-dropdown-edit'),
     view: $('ws-dropdown-view')
   };
 
@@ -1184,6 +1684,13 @@
     saveAs: () => saveFileAs(),
     new: () => newDocument(),
     exit: () => quit(),
+    undo: () => { undo(); closeAllMenus(); },
+    redo: () => { redo(); closeAllMenus(); },
+    cut: () => { cutToClipboard(); closeAllMenus(); },
+    copy: () => { copyToClipboard(); closeAllMenus(); },
+    paste: () => { pasteFromClipboard(); closeAllMenus(); },
+    selectAll: () => { selectAll(); render(); closeAllMenus(); },
+    find: () => { openFindDialog(); closeAllMenus(); },
     zoomIn: () => zoomIn(),
     zoomOut: () => zoomOut(),
     zoomReset: () => zoomReset(),

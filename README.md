@@ -7,12 +7,16 @@ A **Markdown** word processor that runs as a native app (Tauri) on Linux and Win
 ## Features
 
 - **Markdown** — Edit with headings (# ## ###), **bold**, *italic*, `code`, lists, links, and fenced code blocks.
-- **Preview** — View → Preview (or ^P) to see rendered Markdown; toggle back to edit.
-- **Menu bar** — File, View with hover-to-open; every action has a keyboard shortcut.
+- **Preview** — View → Preview (or Ctrl+P) to see rendered Markdown; toggle back to edit.
+- **Menu bar** — File, Edit, View with hover-to-open; every action has a keyboard shortcut.
+- **Undo / Redo** — Ctrl+Z and Ctrl+Shift+Z (or Ctrl+Y); history is cleared on New or Open.
+- **Selection & clipboard** — Shift+Arrow or drag to select; Cut (Ctrl+X), Copy (Ctrl+C), Paste (Ctrl+V), Select All (Ctrl+A). Typing or Delete replaces the selection.
+- **Find & Replace** — Edit → Find… or Ctrl+F; Find Next/Previous, Replace, Replace All; optional case-sensitive search.
 - **Theme** — View → Theme… to choose Dark, Light, Synthwave, or Green terminal (choice is saved).
 - **Font** — View → Font… to choose editor and UI font (choice is saved).
-- **80-column layout** — Word wrap at 80 columns; status line shows filename, line, column, word count, zoom.
-- **Shortcuts** — Ctrl+N New, Alt+Q Exit, Ctrl+P Preview, etc.
+- **80-column layout** — Word wrap at 80 columns; status line shows unsaved indicator (•), word count, and zoom.
+- **Unsaved indicator** — Window title shows • when the document has unsaved changes; status bar shows • when dirty.
+- **Shortcuts** — Ctrl+N New, Ctrl+O Open, Ctrl+S Save, Ctrl+F Find, Alt+Q Exit, etc.
 
 ---
 
@@ -77,21 +81,29 @@ For **open/save from disk** in the browser, Chrome or Edge work best (File Syste
 | Keys | Action |
 |------|--------|
 | **Ctrl+N** | New document |
+| **Ctrl+O** | Open file |
+| **Ctrl+S** | Save |
+| **Ctrl+Shift+S** | Save As… |
 | **Alt+Q** | Exit (with discard prompt if there are changes) |
+| **Ctrl+Z** | Undo |
+| **Ctrl+Shift+Z** / **Ctrl+Y** | Redo |
+| **Ctrl+X** **Ctrl+C** **Ctrl+V** | Cut, Copy, Paste |
+| **Ctrl+A** | Select All |
+| **Ctrl+F** | Find… |
 | **Ctrl+P** | Toggle Markdown preview |
 | **Ctrl++** **Ctrl+-** **Ctrl+0** | Zoom in, out, reset |
 | **View → Font…** | Change font (saved) |
 
-**Movement:** Arrow keys, Home/End (line), Ctrl+Home/End (doc), Page Up/Down.  
+**Movement:** Arrow keys, Home/End (line), Ctrl+Home/End (doc), Page Up/Down. Shift+Arrow extends selection.  
 **Editing:** Backspace, Delete, Enter, Tab.
 
 ---
 
 ## Look and feel
 
-- Dark grey theme.
+- Dark grey theme (or Light, Synthwave, Green terminal).
 - 80-column editor with word wrap; no horizontal scrollbar.
-- Status line: word count, zoom.
+- Status line: unsaved indicator (•), word count, zoom.
 - Window starts maximized; layout fills the viewport.
 
 Content is **Markdown** for preview rendering.
