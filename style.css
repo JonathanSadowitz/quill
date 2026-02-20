@@ -63,33 +63,10 @@ html, body {
   box-sizing: border-box;
 }
 
-/* Status line – 80 cols, centered */
-.ws-status {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0 2px;
-  height: 1.5em;
-  width: calc(var(--ws-cols) * var(--ws-char-width));
-  margin-left: auto;
-  margin-right: auto;
-  background: var(--ws-status-bg);
-  color: var(--ws-status-fg);
-  font-weight: bold;
-  white-space: pre;
-  flex-shrink: 0;
-  box-sizing: border-box;
-}
-
-.ws-status-wordcount {
-  margin-left: auto;
-  opacity: 0.9;
-}
-
+/* Word count and zoom (in menubar top right) */
+.ws-status-wordcount,
 .ws-status-zoom {
-  margin-left: 0.75rem;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.9;
+  white-space: nowrap;
 }
 
 /* Menu bar (Ghostwriter-style) */
@@ -106,10 +83,27 @@ html, body {
 .ws-menubar-inner {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0;
   padding: 0 0.25rem;
   min-height: 2rem;
   flex-wrap: nowrap;
+}
+
+.ws-menubar-left {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.ws-menubar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--ws-menubar-fg);
+  opacity: 0.9;
+  font-variant-numeric: tabular-nums;
 }
 
 .ws-menubar-sep {
@@ -127,7 +121,8 @@ html, body {
 }
 
 .ws-menu-item:hover,
-.ws-menu-item[aria-expanded="true"] {
+.ws-menu-item[aria-expanded="true"],
+.ws-menu-item-keyboard-focus {
   background: var(--ws-menubar-hover);
   color: #fff;
 }

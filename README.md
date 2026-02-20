@@ -11,7 +11,7 @@ A **Markdown** word processor that runs as a native app (Tauri) on Linux and Win
 - **Menu bar** — File, View with hover-to-open; every action has a keyboard shortcut.
 - **Font** — View → Font… to choose editor and UI font (choice is saved).
 - **80-column layout** — Word wrap at 80 columns; status line shows filename, line, column, word count, zoom.
-- **Shortcuts** — Compact: ^N New, M-Q Exit, ^P Preview, etc.
+- **Shortcuts** — Ctrl+N New, Alt+Q Exit, Ctrl+P Preview, etc.
 
 ---
 
@@ -75,10 +75,10 @@ For **open/save from disk** in the browser, Chrome or Edge work best (File Syste
 
 | Keys | Action |
 |------|--------|
-| **^N** | New document |
-| **M-Q** | Exit (with discard prompt if there are changes) |
-| **^P** | Toggle Markdown preview |
-| **^+** **^-** **^0** | Zoom in, out, reset |
+| **Ctrl+N** | New document |
+| **Alt+Q** | Exit (with discard prompt if there are changes) |
+| **Ctrl+P** | Toggle Markdown preview |
+| **Ctrl++** **Ctrl+-** **Ctrl+0** | Zoom in, out, reset |
 | **View → Font…** | Change font (saved) |
 
 **Movement:** Arrow keys, Home/End (line), Ctrl+Home/End (doc), Page Up/Down.  

@@ -207,9 +207,17 @@
     const rect = measure.getBoundingClientRect();
     const lineRect = lineEl.getBoundingClientRect();
     measure.remove();
-    cursorEl.style.top = (lineRect.top - wrapRect.top + wrap.scrollTop) + 'px';
+    const cursorContentTop = lineRect.top - wrapRect.top + wrap.scrollTop;
+    const cursorHeight = lineRect.bottom - lineRect.top;
+    cursorEl.style.top = cursorContentTop + 'px';
     cursorEl.style.left = (rect.left - wrapRect.left + wrap.scrollLeft) + 'px';
-    cursorEl.style.height = (lineRect.bottom - lineRect.top) + 'px';
+    cursorEl.style.height = cursorHeight + 'px';
+    // Keep cursor in view: auto-scroll when cursor goes off screen
+    if (cursorContentTop < wrap.scrollTop) {
+      wrap.scrollTop = cursorContentTop;
+    } else if (cursorContentTop + cursorHeight > wrap.scrollTop + wrap.clientHeight) {
+      wrap.scrollTop = cursorContentTop + cursorHeight - wrap.clientHeight;
+    }
   }
 
   function wordCount() {
@@ -236,11 +244,13 @@
     const dialog = $('ws-new-dialog');
     if (!dialog) return;
     dialog.setAttribute('aria-hidden', 'false');
+    const buttons = dialog.querySelectorAll('button[data-choice]');
+    if (buttons.length) buttons[0].focus();
     const choice = await new Promise((resolve) => {
       const finish = (c) => {
         dialog.setAttribute('aria-hidden', 'true');
         document.removeEventListener('click', clickHandler);
-        document.removeEventListener('keydown', keyHandler);
+        document.removeEventListener('keydown', keyHandler, true);
         resolve(c);
       };
       const clickHandler = (e) => {
@@ -260,10 +270,36 @@
         if (e.key === 'Escape') {
           e.preventDefault();
           finish('cancel');
+          return;
+        }
+        if (e.key === 'Enter') {
+          const focused = dialog.querySelector('button[data-choice]:focus');
+          if (focused) {
+            e.preventDefault();
+            finish(focused.dataset.choice);
+          }
+          return;
+        }
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
+          const idx = Array.from(buttons).indexOf(document.activeElement);
+          if (idx !== -1) {
+            e.preventDefault();
+            e.stopPropagation();
+            buttons[(idx - 1 + buttons.length) % buttons.length].focus();
+          }
+          return;
+        }
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'Tab') {
+          const idx = Array.from(buttons).indexOf(document.activeElement);
+          if (idx !== -1) {
+            e.preventDefault();
+            e.stopPropagation();
+            buttons[(idx + 1) % buttons.length].focus();
+          }
         }
       };
       document.addEventListener('click', clickHandler);
-      document.addEventListener('keydown', keyHandler);
+      document.addEventListener('keydown', keyHandler, true);
     });
     if (choice === 'discard') {
       doClearForNew();
@@ -435,19 +471,29 @@
     render();
   }
 
+  function doExit() {
+    if (typeof window.__TAURI__ !== 'undefined' && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === 'function') {
+      window.__TAURI__.core.invoke('exit_app').catch(() => {});
+    } else {
+      window.close();
+    }
+  }
+
   async function quit() {
     if (!dirty) {
-      window.close();
+      doExit();
       return;
     }
     const dialog = $('ws-exit-dialog');
     if (!dialog) return;
     dialog.setAttribute('aria-hidden', 'false');
+    const buttons = dialog.querySelectorAll('button[data-exit-choice]');
+    if (buttons.length) buttons[0].focus();
     const choice = await new Promise((resolve) => {
       const finish = (c) => {
         dialog.setAttribute('aria-hidden', 'true');
         document.removeEventListener('click', clickHandler);
-        document.removeEventListener('keydown', keyHandler);
+        document.removeEventListener('keydown', keyHandler, true);
         resolve(c);
       };
       const clickHandler = (e) => {
@@ -467,13 +513,39 @@
         if (e.key === 'Escape') {
           e.preventDefault();
           finish('cancel');
+          return;
+        }
+        if (e.key === 'Enter') {
+          const focused = dialog.querySelector('button[data-exit-choice]:focus');
+          if (focused) {
+            e.preventDefault();
+            finish(focused.dataset.exitChoice);
+          }
+          return;
+        }
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
+          const idx = Array.from(buttons).indexOf(document.activeElement);
+          if (idx !== -1) {
+            e.preventDefault();
+            e.stopPropagation();
+            buttons[(idx - 1 + buttons.length) % buttons.length].focus();
+          }
+          return;
+        }
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'Tab') {
+          const idx = Array.from(buttons).indexOf(document.activeElement);
+          if (idx !== -1) {
+            e.preventDefault();
+            e.stopPropagation();
+            buttons[(idx + 1) % buttons.length].focus();
+          }
         }
       };
       document.addEventListener('click', clickHandler);
-      document.addEventListener('keydown', keyHandler);
+      document.addEventListener('keydown', keyHandler, true);
     });
     if (choice === 'discard') {
-      window.close();
+      doExit();
     }
   }
 
@@ -609,10 +681,151 @@
   };
 
   // Global shortcuts: work even when editor doesn't have focus (capture phase)
+  const MENU_ORDER = ['file', 'view'];
+  let menuBarFocused = false;
+  let focusedMenuIndex = 0;
+
+  function getOpenMenuIndex() {
+    for (let i = 0; i < MENU_ORDER.length; i++) {
+      const panel = $('ws-dropdown-' + MENU_ORDER[i]);
+      if (panel && !panel.hidden) return i;
+    }
+    return -1;
+  }
+
+  function clearMenuBarKeyboardFocus() {
+    menuBarFocused = false;
+    document.querySelectorAll('.ws-menu-item').forEach((el) => el.classList.remove('ws-menu-item-keyboard-focus'));
+  }
+
+  function setMenuBarHighlight(index) {
+    focusedMenuIndex = index;
+    document.querySelectorAll('.ws-menu-item').forEach((el) => {
+      el.classList.toggle('ws-menu-item-keyboard-focus', el.dataset.menu === MENU_ORDER[index]);
+    });
+  }
+
   function globalShortcutHandler(e) {
     const key = e.key;
     const ctrl = e.ctrlKey;
     const shift = e.shiftKey;
+
+    // Escape: return focus to editor, close any menu (unless a modal dialog is open)
+    if (key === 'Escape') {
+      const fontDialog = $('ws-font-dialog');
+      const newDialog = $('ws-new-dialog');
+      const exitDialog = $('ws-exit-dialog');
+      if (fontDialog && fontDialog.getAttribute('aria-hidden') === 'false') return;
+      if (newDialog && newDialog.getAttribute('aria-hidden') === 'false') return;
+      if (exitDialog && exitDialog.getAttribute('aria-hidden') === 'false') return;
+      closeAllMenus();
+      clearMenuBarKeyboardFocus();
+      textEl.focus();
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
+    // When a modal is open, don't handle menu/dropdown keys so the modal can use arrow keys and Enter
+    const newDialogOpen = $('ws-new-dialog') && $('ws-new-dialog').getAttribute('aria-hidden') === 'false';
+    const exitDialogOpen = $('ws-exit-dialog') && $('ws-exit-dialog').getAttribute('aria-hidden') === 'false';
+    const fontDialogOpen = $('ws-font-dialog') && $('ws-font-dialog').getAttribute('aria-hidden') === 'false';
+    const modalOpen = newDialogOpen || exitDialogOpen || fontDialogOpen;
+
+    // When a dropdown is open: Arrow Up/Down navigate items; Left/Right switch menus; Enter executes
+    if (!modalOpen) {
+    const openIdx = getOpenMenuIndex();
+    if (openIdx >= 0) {
+      if (key === 'ArrowLeft') {
+        e.preventDefault();
+        e.stopPropagation();
+        const prevMenuIdx = (openIdx - 1 + MENU_ORDER.length) % MENU_ORDER.length;
+        openMenu(MENU_ORDER[prevMenuIdx]);
+        const panel = $('ws-dropdown-' + MENU_ORDER[prevMenuIdx]);
+        const firstBtn = panel && panel.querySelector('button');
+        if (firstBtn) firstBtn.focus();
+        return;
+      }
+      if (key === 'ArrowRight') {
+        e.preventDefault();
+        e.stopPropagation();
+        const nextMenuIdx = (openIdx + 1) % MENU_ORDER.length;
+        openMenu(MENU_ORDER[nextMenuIdx]);
+        const panel = $('ws-dropdown-' + MENU_ORDER[nextMenuIdx]);
+        const firstBtn = panel && panel.querySelector('button');
+        if (firstBtn) firstBtn.focus();
+        return;
+      }
+      const panel = $('ws-dropdown-' + MENU_ORDER[openIdx]);
+      const buttons = panel ? Array.from(panel.querySelectorAll('button')) : [];
+      if (buttons.length > 0) {
+        if (key === 'ArrowDown') {
+          e.preventDefault();
+          e.stopPropagation();
+          const currentIdx = buttons.indexOf(document.activeElement);
+          const nextIdx = currentIdx < 0 ? 0 : (currentIdx + 1) % buttons.length;
+          buttons[nextIdx].focus();
+          return;
+        }
+        if (key === 'ArrowUp') {
+          e.preventDefault();
+          e.stopPropagation();
+          const currentIdx = buttons.indexOf(document.activeElement);
+          const prevIdx = currentIdx <= 0 ? buttons.length - 1 : currentIdx - 1;
+          buttons[prevIdx].focus();
+          return;
+        }
+        if (key === 'Enter') {
+          const focused = document.activeElement;
+          if (focused && buttons.indexOf(focused) !== -1) {
+            e.preventDefault();
+            e.stopPropagation();
+            focused.click();
+          }
+          return;
+        }
+      }
+    }
+    }
+
+    // Alt (by itself): highlight File menu for keyboard navigation
+    if (key === 'Alt' && !e.repeat && !ctrl) {
+      if (!menuBarFocused && getOpenMenuIndex() === -1) {
+        menuBarFocused = true;
+        setMenuBarHighlight(0);
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      return;
+    }
+
+    // When menu bar is highlighted: Arrow Left/Right move between menus; Down, Up, or Enter opens dropdown
+    if (!modalOpen && menuBarFocused) {
+      if (key === 'ArrowLeft') {
+        e.preventDefault();
+        e.stopPropagation();
+        setMenuBarHighlight((focusedMenuIndex - 1 + MENU_ORDER.length) % MENU_ORDER.length);
+        return;
+      }
+      if (key === 'ArrowRight') {
+        e.preventDefault();
+        e.stopPropagation();
+        setMenuBarHighlight((focusedMenuIndex + 1) % MENU_ORDER.length);
+        return;
+      }
+      if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        const menuId = MENU_ORDER[focusedMenuIndex];
+        openMenu(menuId);
+        const panel = $('ws-dropdown-' + menuId);
+        const firstBtn = panel && panel.querySelector('button');
+        if (firstBtn) firstBtn.focus();
+        clearMenuBarKeyboardFocus();
+        return;
+      }
+    }
+
     if (ctrl && key === 'n' && !shift) {
       e.preventDefault();
       e.stopPropagation();
@@ -730,6 +943,7 @@
   };
 
   function closeAllMenus() {
+    clearMenuBarKeyboardFocus();
     document.querySelectorAll('.ws-menu-item').forEach((el) => el.setAttribute('aria-expanded', 'false'));
     Object.values(dropdowns).forEach((d) => { if (d) d.hidden = true; });
   }
@@ -800,9 +1014,11 @@
       const action = btn.dataset.action;
       const fn = actionHandlers[action];
       if (fn) fn();
-      // After using menu actions like Copy/Paste, return focus to the editor
-      // so typing and Backspace/Delete continue to work as expected.
-      textEl.focus();
+      // Return focus to the editor unless the action opened a modal (New/Exit),
+      // so the modal can keep focus for keyboard navigation (Discard/Cancel).
+      if (action !== 'new' && action !== 'exit') {
+        textEl.focus();
+      }
     });
   });
 
@@ -820,7 +1036,6 @@
     if (e.target.closest('.ws-menubar') || e.target.closest('.ws-dropdown')) return;
     closeAllMenus();
   });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeAllMenus(); });
 
   // Init
   const savedFont = localStorage.getItem(FONT_STORAGE_KEY);

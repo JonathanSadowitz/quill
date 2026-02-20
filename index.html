@@ -14,21 +14,27 @@
     <!-- Menu bar: File, View -->
     <header class="ws-menubar" role="menubar">
       <div class="ws-menubar-inner">
-        <div class="ws-menu-item" data-menu="file" aria-haspopup="true" aria-expanded="false">File</div>
-        <div class="ws-menu-item" data-menu="view" aria-haspopup="true" aria-expanded="false">View</div>
+        <div class="ws-menubar-left">
+          <div class="ws-menu-item" data-menu="file" aria-haspopup="true" aria-expanded="false">File</div>
+          <div class="ws-menu-item" data-menu="view" aria-haspopup="true" aria-expanded="false">View</div>
+        </div>
+        <div class="ws-menubar-right">
+          <span id="ws-wordcount" class="ws-status-wordcount">0 words</span>
+          <span id="ws-zoom-value" class="ws-status-zoom">100%</span>
+        </div>
       </div>
       <!-- Dropdown panels (hidden by default) -->
       <div id="ws-dropdown-file" class="ws-dropdown" role="menu" aria-label="File menu" hidden>
-        <button type="button" role="menuitem" data-action="new"><span class="ws-menuitem-label">New</span><span class="ws-menuitem-shortcut">^N</span></button>
+        <button type="button" role="menuitem" data-action="new"><span class="ws-menuitem-label">New</span><span class="ws-menuitem-shortcut">Ctrl+N</span></button>
         <hr>
-        <button type="button" role="menuitem" data-action="exit"><span class="ws-menuitem-label">Exit</span><span class="ws-menuitem-shortcut">M-Q</span></button>
+        <button type="button" role="menuitem" data-action="exit"><span class="ws-menuitem-label">Exit</span><span class="ws-menuitem-shortcut">Alt+Q</span></button>
       </div>
       <div id="ws-dropdown-view" class="ws-dropdown" role="menu" aria-label="View menu" hidden>
-        <button type="button" role="menuitem" data-action="togglePreview"><span class="ws-menuitem-label">Preview</span><span class="ws-menuitem-shortcut">^P</span></button>
+        <button type="button" role="menuitem" data-action="togglePreview"><span class="ws-menuitem-label">Preview</span><span class="ws-menuitem-shortcut">Ctrl+P</span></button>
         <hr>
-        <button type="button" role="menuitem" data-action="zoomIn"><span class="ws-menuitem-label">Zoom in</span><span class="ws-menuitem-shortcut">^+</span></button>
-        <button type="button" role="menuitem" data-action="zoomOut"><span class="ws-menuitem-label">Zoom out</span><span class="ws-menuitem-shortcut">^-</span></button>
-        <button type="button" role="menuitem" data-action="zoomReset"><span class="ws-menuitem-label">Reset zoom</span><span class="ws-menuitem-shortcut">^0</span></button>
+        <button type="button" role="menuitem" data-action="zoomIn"><span class="ws-menuitem-label">Zoom in</span><span class="ws-menuitem-shortcut">Ctrl++</span></button>
+        <button type="button" role="menuitem" data-action="zoomOut"><span class="ws-menuitem-label">Zoom out</span><span class="ws-menuitem-shortcut">Ctrl+-</span></button>
+        <button type="button" role="menuitem" data-action="zoomReset"><span class="ws-menuitem-label">Reset zoom</span><span class="ws-menuitem-shortcut">Ctrl+0</span></button>
         <hr>
         <button type="button" role="menuitem" data-action="font"><span class="ws-menuitem-label">Font…</span></button>
       </div>
@@ -46,11 +52,6 @@
       <div id="ws-preview-wrap" class="ws-preview-wrap" aria-hidden="true">
         <div id="ws-preview" class="ws-preview"></div>
       </div>
-    </div>
-    <!-- Status line: word count, zoom (bottom) -->
-    <div id="ws-status" class="ws-status">
-      <span id="ws-wordcount" class="ws-status-wordcount">0 words</span>
-      <span id="ws-zoom-value" class="ws-status-zoom">100%</span>
     </div>
     <!-- Font chooser -->
     <div id="ws-font-dialog" class="ws-dialog-overlay" role="dialog" aria-label="Choose font" aria-hidden="true">
