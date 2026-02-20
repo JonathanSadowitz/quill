@@ -3,6 +3,7 @@
 :root {
   --ws-zoom: 1;
   --ws-bg: #252526;
+  --ws-canvas-bg: #2d2d30;
   --ws-side-bg: #3c3c3c;
   --ws-fg: #d4d4d4;
   --ws-status-bg: #3c3c3c;
@@ -29,8 +30,9 @@
 
 /* Light theme */
 [data-theme="light"] {
-  --ws-bg: #f5f5f5;
-  --ws-side-bg: #e8e8e8;
+  --ws-bg: #e8e8e8;
+  --ws-canvas-bg: #ffffff;
+  --ws-side-bg: #e0e0e0;
   --ws-fg: #333333;
   --ws-status-bg: #e8e8e8;
   --ws-status-fg: #333333;
@@ -51,8 +53,9 @@
 
 /* Synthwave (neon purple/cyan/pink) */
 [data-theme="synthwave"] {
-  --ws-bg: #2b213a;
-  --ws-side-bg: #241b2f;
+  --ws-bg: #241b2f;
+  --ws-canvas-bg: #2b213a;
+  --ws-side-bg: #1a1033;
   --ws-fg: #f92aad;
   --ws-status-bg: #241b2f;
   --ws-status-fg: #72f1b8;
@@ -74,7 +77,8 @@
 /* Green terminal (matrix/CRT) */
 [data-theme="terminal"] {
   --ws-bg: #0d1117;
-  --ws-side-bg: #161b22;
+  --ws-canvas-bg: #161b22;
+  --ws-side-bg: #0d1117;
   --ws-fg: #3fb950;
   --ws-status-bg: #161b22;
   --ws-status-fg: #7ee787;
@@ -371,7 +375,7 @@ html, body {
   box-sizing: border-box;
   padding-top: 2px;
   padding-right: 0.1em;
-  background: var(--ws-bg);
+  background: var(--ws-canvas-bg);
 }
 
 .ws-text {
