@@ -24,6 +24,73 @@
   --ws-toolbar-bg: #2d2d30;
   --ws-toolbar-fg: #cccccc;
   --ws-toolbar-hover: #094771;
+  --ws-link: #6eb3f7;
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --ws-bg: #f5f5f5;
+  --ws-side-bg: #e8e8e8;
+  --ws-fg: #333333;
+  --ws-status-bg: #e8e8e8;
+  --ws-status-fg: #333333;
+  --ws-ruler-fg: #666666;
+  --ws-menu-fg: #555555;
+  --ws-cursor-color: #333333;
+  --ws-block-bg: #e0e0e0;
+  --ws-menubar-bg: #eaeaea;
+  --ws-menubar-fg: #333333;
+  --ws-menubar-hover: #0e639c;
+  --ws-dropdown-bg: #f5f5f5;
+  --ws-dropdown-border: #d0d0d0;
+  --ws-toolbar-bg: #eaeaea;
+  --ws-toolbar-fg: #333333;
+  --ws-toolbar-hover: #0e639c;
+  --ws-link: #0e639c;
+}
+
+/* Synthwave (neon purple/cyan/pink) */
+[data-theme="synthwave"] {
+  --ws-bg: #2b213a;
+  --ws-side-bg: #241b2f;
+  --ws-fg: #f92aad;
+  --ws-status-bg: #241b2f;
+  --ws-status-fg: #72f1b8;
+  --ws-ruler-fg: #fede5d;
+  --ws-menu-fg: #72f1b8;
+  --ws-cursor-color: #fede5d;
+  --ws-block-bg: #7e22ce;
+  --ws-menubar-bg: #1a1033;
+  --ws-menubar-fg: #72f1b8;
+  --ws-menubar-hover: #7e22ce;
+  --ws-dropdown-bg: #2b213a;
+  --ws-dropdown-border: #f92aad;
+  --ws-toolbar-bg: #1a1033;
+  --ws-toolbar-fg: #72f1b8;
+  --ws-toolbar-hover: #7e22ce;
+  --ws-link: #f92aad;
+}
+
+/* Green terminal (matrix/CRT) */
+[data-theme="terminal"] {
+  --ws-bg: #0d1117;
+  --ws-side-bg: #161b22;
+  --ws-fg: #3fb950;
+  --ws-status-bg: #161b22;
+  --ws-status-fg: #7ee787;
+  --ws-ruler-fg: #238636;
+  --ws-menu-fg: #7ee787;
+  --ws-cursor-color: #7ee787;
+  --ws-block-bg: #21262d;
+  --ws-menubar-bg: #161b22;
+  --ws-menubar-fg: #7ee787;
+  --ws-menubar-hover: #238636;
+  --ws-dropdown-bg: #0d1117;
+  --ws-dropdown-border: #30363d;
+  --ws-toolbar-bg: #161b22;
+  --ws-toolbar-fg: #7ee787;
+  --ws-toolbar-hover: #238636;
+  --ws-link: #7ee787;
 }
 
 * {
@@ -277,7 +344,7 @@ html, body {
 .ws-preview pre code { background: none; padding: 0; }
 .ws-preview strong { font-weight: bold; }
 .ws-preview em { font-style: italic; }
-.ws-preview a { color: #6eb3f7; }
+.ws-preview a { color: var(--ws-link); }
 .ws-preview a:hover { text-decoration: underline; }
 .ws-preview hr { border: none; border-top: 1px solid var(--ws-dropdown-border); margin: 1rem 0; }
 .ws-dialog-font-row { margin-bottom: 1rem; }

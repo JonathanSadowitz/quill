@@ -1,6 +1,6 @@
 # Quill
 
-A **Markdown** word processor that runs as a native app (Tauri) on Linux and Windows, or in the browser. Dark theme, 80-column layout, live preview, and compact keyboard shortcuts (^X = Ctrl+X, M-X = Alt+X).
+A **Markdown** word processor that runs as a native app (Tauri) on Linux and Windows, or in the browser. Choose a theme (dark, light, synthwave, green terminal), 80-column layout, live preview, and compact keyboard shortcuts (^X = Ctrl+X, M-X = Alt+X).
 
 ---
 
@@ -9,6 +9,7 @@ A **Markdown** word processor that runs as a native app (Tauri) on Linux and Win
 - **Markdown** — Edit with headings (# ## ###), **bold**, *italic*, `code`, lists, links, and fenced code blocks.
 - **Preview** — View → Preview (or ^P) to see rendered Markdown; toggle back to edit.
 - **Menu bar** — File, View with hover-to-open; every action has a keyboard shortcut.
+- **Theme** — View → Theme… to choose Dark, Light, Synthwave, or Green terminal (choice is saved).
 - **Font** — View → Font… to choose editor and UI font (choice is saved).
 - **80-column layout** — Word wrap at 80 columns; status line shows filename, line, column, word count, zoom.
 - **Shortcuts** — Ctrl+N New, Alt+Q Exit, Ctrl+P Preview, etc.

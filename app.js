@@ -856,10 +856,12 @@
     // Escape: return focus to editor, close any menu (unless a modal dialog is open)
     if (key === 'Escape') {
       const fontDialog = $('ws-font-dialog');
+      const themeDialog = $('ws-theme-dialog');
       const newDialog = $('ws-new-dialog');
       const exitDialog = $('ws-exit-dialog');
       const openDialog = $('ws-open-dialog');
       if (fontDialog && fontDialog.getAttribute('aria-hidden') === 'false') return;
+      if (themeDialog && themeDialog.getAttribute('aria-hidden') === 'false') return;
       if (newDialog && newDialog.getAttribute('aria-hidden') === 'false') return;
       if (exitDialog && exitDialog.getAttribute('aria-hidden') === 'false') return;
       if (openDialog && openDialog.getAttribute('aria-hidden') === 'false') return;
@@ -876,7 +878,8 @@
     const exitDialogOpen = $('ws-exit-dialog') && $('ws-exit-dialog').getAttribute('aria-hidden') === 'false';
     const openDialogOpen = $('ws-open-dialog') && $('ws-open-dialog').getAttribute('aria-hidden') === 'false';
     const fontDialogOpen = $('ws-font-dialog') && $('ws-font-dialog').getAttribute('aria-hidden') === 'false';
-    const modalOpen = newDialogOpen || exitDialogOpen || openDialogOpen || fontDialogOpen;
+    const themeDialogOpen = $('ws-theme-dialog') && $('ws-theme-dialog').getAttribute('aria-hidden') === 'false';
+    const modalOpen = newDialogOpen || exitDialogOpen || openDialogOpen || fontDialogOpen || themeDialogOpen;
 
     // When a dropdown is open: Arrow Up/Down navigate items; Left/Right switch menus; Enter executes
     if (!modalOpen) {
@@ -1057,6 +1060,54 @@
     if (textEl.querySelector(`[data-line="${row}"]`)) updateCursorPos();
   });
 
+  // ----- Theme -----
+  const THEME_STORAGE_KEY = 'quill-theme';
+  const DEFAULT_THEME = 'dark';
+
+  function applyTheme(themeId) {
+    const id = themeId && themeId !== DEFAULT_THEME ? themeId : '';
+    if (id) {
+      document.documentElement.setAttribute('data-theme', id);
+      localStorage.setItem(THEME_STORAGE_KEY, id);
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      localStorage.removeItem(THEME_STORAGE_KEY);
+    }
+  }
+
+  function openThemeDialog() {
+    const dialog = $('ws-theme-dialog');
+    const select = $('ws-theme-select');
+    if (!dialog || !select) return;
+    const current = localStorage.getItem(THEME_STORAGE_KEY) || DEFAULT_THEME;
+    select.value = current;
+    dialog.setAttribute('aria-hidden', 'false');
+  }
+
+  function closeThemeDialog() {
+    const dialog = $('ws-theme-dialog');
+    if (dialog) dialog.setAttribute('aria-hidden', 'true');
+  }
+
+  (function initThemeDialog() {
+    const dialog = $('ws-theme-dialog');
+    const select = $('ws-theme-select');
+    if (!dialog || !select) return;
+    const applyBtn = dialog.querySelector('[data-theme-apply]');
+    const cancelBtn = dialog.querySelector('[data-theme-cancel]');
+    if (applyBtn) applyBtn.addEventListener('click', () => {
+      applyTheme(select.value);
+      closeThemeDialog();
+    });
+    if (cancelBtn) cancelBtn.addEventListener('click', closeThemeDialog);
+    dialog.addEventListener('click', (e) => { if (e.target === dialog) closeThemeDialog(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && dialog.getAttribute('aria-hidden') === 'false') {
+        closeThemeDialog();
+      }
+    });
+  })();
+
   // ----- Font -----
   const FONT_STORAGE_KEY = 'quill-font';
   const DEFAULT_FONT = 'IBM Plex Mono, Liberation Mono, Courier New, monospace';
@@ -1137,6 +1188,7 @@
     zoomOut: () => zoomOut(),
     zoomReset: () => zoomReset(),
     togglePreview: () => { togglePreview(); closeAllMenus(); },
+    theme: () => { openThemeDialog(); closeAllMenus(); },
     font: () => { openFontDialog(); closeAllMenus(); }
   };
 
@@ -1205,6 +1257,8 @@
   });
 
   // Init
+  const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
+  if (savedTheme) applyTheme(savedTheme);
   const savedFont = localStorage.getItem(FONT_STORAGE_KEY);
   if (savedFont) applyFont(savedFont);
   renderRuler();
