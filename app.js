@@ -13,6 +13,7 @@
   let row = 0;
   let col = 0;
   let dirty = false;
+  let currentFilePath = null;
 
   const $ = (id) => document.getElementById(id);
   const ruler = $('ws-ruler-content');
@@ -233,7 +234,134 @@
   }
 
   function doClearForNew() {
+    currentFilePath = null;
     setFullText('');
+  }
+
+  function updateWindowTitle() {
+    if (typeof document !== 'undefined' && document.title !== undefined) {
+      document.title = currentFilePath ? currentFilePath.replace(/^.*[/\\]/, '') + ' – Quill' : 'Quill';
+    }
+  }
+
+  async function doOpenFile() {
+    if (typeof window.__TAURI__ === 'undefined' || !window.__TAURI__.core || typeof window.__TAURI__.core.invoke !== 'function') {
+      return;
+    }
+    try {
+      const result = await window.__TAURI__.core.invoke('open_file');
+      setFullText(result.content);
+      currentFilePath = result.path;
+      dirty = false;
+      updateWindowTitle();
+    } catch (err) {
+      if (err && String(err).toLowerCase() !== 'cancelled') {
+        console.error(err);
+      }
+    }
+  }
+
+  async function openFile() {
+    if (!dirty) {
+      await doOpenFile();
+      return;
+    }
+    const dialog = $('ws-open-dialog');
+    if (!dialog) return;
+    dialog.setAttribute('aria-hidden', 'false');
+    const buttons = dialog.querySelectorAll('button[data-choice]');
+    if (buttons.length) buttons[0].focus();
+    const choice = await new Promise((resolve) => {
+      const finish = (c) => {
+        dialog.setAttribute('aria-hidden', 'true');
+        document.removeEventListener('click', clickHandler);
+        document.removeEventListener('keydown', keyHandler, true);
+        resolve(c);
+      };
+      const clickHandler = (e) => {
+        const btn = e.target.closest('[data-choice]');
+        if (btn) {
+          e.preventDefault();
+          e.stopPropagation();
+          finish(btn.dataset.choice);
+          return;
+        }
+        if (e.target === dialog) {
+          e.preventDefault();
+          finish('cancel');
+        }
+      };
+      const keyHandler = (e) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          finish('cancel');
+          return;
+        }
+        if (e.key === 'Enter') {
+          const focused = dialog.querySelector('button[data-choice]:focus');
+          if (focused) {
+            e.preventDefault();
+            finish(focused.dataset.choice);
+          }
+          return;
+        }
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
+          const idx = Array.from(buttons).indexOf(document.activeElement);
+          if (idx !== -1) {
+            e.preventDefault();
+            e.stopPropagation();
+            buttons[(idx - 1 + buttons.length) % buttons.length].focus();
+          }
+          return;
+        }
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === 'Tab') {
+          const idx = Array.from(buttons).indexOf(document.activeElement);
+          if (idx !== -1) {
+            e.preventDefault();
+            e.stopPropagation();
+            buttons[(idx + 1) % buttons.length].focus();
+          }
+        }
+      };
+      document.addEventListener('click', clickHandler);
+      document.addEventListener('keydown', keyHandler, true);
+    });
+    if (choice === 'discard') {
+      await doOpenFile();
+    }
+  }
+
+  async function saveFile() {
+    if (typeof window.__TAURI__ === 'undefined' || !window.__TAURI__.core || typeof window.__TAURI__.core.invoke !== 'function') {
+      return;
+    }
+    if (currentFilePath) {
+      try {
+        await window.__TAURI__.core.invoke('save_file', { path: currentFilePath, content: getFullText() });
+        dirty = false;
+        updateWindowTitle();
+      } catch (err) {
+        console.error(err);
+      }
+      return;
+    }
+    await saveFileAs();
+  }
+
+  async function saveFileAs() {
+    if (typeof window.__TAURI__ === 'undefined' || !window.__TAURI__.core || typeof window.__TAURI__.core.invoke !== 'function') {
+      return;
+    }
+    try {
+      const path = await window.__TAURI__.core.invoke('save_file_as', { content: getFullText() });
+      currentFilePath = path;
+      dirty = false;
+      updateWindowTitle();
+    } catch (err) {
+      if (err && String(err).toLowerCase() !== 'cancelled') {
+        console.error(err);
+      }
+    }
   }
 
   async function newDocument() {
@@ -598,6 +726,21 @@
       newDocument();
       return;
     }
+    if (ctrl && key === 'o') {
+      e.preventDefault();
+      openFile();
+      return;
+    }
+    if (ctrl && key === 's') {
+      e.preventDefault();
+      saveFile();
+      return;
+    }
+    if (ctrl && shift && key === 'S') {
+      e.preventDefault();
+      saveFileAs();
+      return;
+    }
     if (e.altKey && !ctrl && (key === 'q' || key === 'Q')) {
       e.preventDefault();
       quit();
@@ -715,9 +858,11 @@
       const fontDialog = $('ws-font-dialog');
       const newDialog = $('ws-new-dialog');
       const exitDialog = $('ws-exit-dialog');
+      const openDialog = $('ws-open-dialog');
       if (fontDialog && fontDialog.getAttribute('aria-hidden') === 'false') return;
       if (newDialog && newDialog.getAttribute('aria-hidden') === 'false') return;
       if (exitDialog && exitDialog.getAttribute('aria-hidden') === 'false') return;
+      if (openDialog && openDialog.getAttribute('aria-hidden') === 'false') return;
       closeAllMenus();
       clearMenuBarKeyboardFocus();
       textEl.focus();
@@ -729,8 +874,9 @@
     // When a modal is open, don't handle menu/dropdown keys so the modal can use arrow keys and Enter
     const newDialogOpen = $('ws-new-dialog') && $('ws-new-dialog').getAttribute('aria-hidden') === 'false';
     const exitDialogOpen = $('ws-exit-dialog') && $('ws-exit-dialog').getAttribute('aria-hidden') === 'false';
+    const openDialogOpen = $('ws-open-dialog') && $('ws-open-dialog').getAttribute('aria-hidden') === 'false';
     const fontDialogOpen = $('ws-font-dialog') && $('ws-font-dialog').getAttribute('aria-hidden') === 'false';
-    const modalOpen = newDialogOpen || exitDialogOpen || fontDialogOpen;
+    const modalOpen = newDialogOpen || exitDialogOpen || openDialogOpen || fontDialogOpen;
 
     // When a dropdown is open: Arrow Up/Down navigate items; Left/Right switch menus; Enter executes
     if (!modalOpen) {
@@ -830,6 +976,24 @@
       e.preventDefault();
       e.stopPropagation();
       newDocument();
+      return;
+    }
+    if (ctrl && key === 'o') {
+      e.preventDefault();
+      e.stopPropagation();
+      openFile();
+      return;
+    }
+    if (ctrl && key === 's') {
+      e.preventDefault();
+      e.stopPropagation();
+      saveFile();
+      return;
+    }
+    if (ctrl && shift && key === 'S') {
+      e.preventDefault();
+      e.stopPropagation();
+      saveFileAs();
       return;
     }
     if (e.altKey && !ctrl && (key === 'q' || key === 'Q')) {
@@ -964,6 +1128,9 @@
   }
 
   const actionHandlers = {
+    open: () => openFile(),
+    save: () => saveFile(),
+    saveAs: () => saveFileAs(),
     new: () => newDocument(),
     exit: () => quit(),
     zoomIn: () => zoomIn(),
@@ -1016,7 +1183,7 @@
       if (fn) fn();
       // Return focus to the editor unless the action opened a modal (New/Exit),
       // so the modal can keep focus for keyboard navigation (Discard/Cancel).
-      if (action !== 'new' && action !== 'exit') {
+      if (action !== 'new' && action !== 'exit' && action !== 'open') {
         textEl.focus();
       }
     });

@@ -3,6 +3,7 @@
 :root {
   --ws-zoom: 1;
   --ws-bg: #252526;
+  --ws-side-bg: #3c3c3c;
   --ws-fg: #d4d4d4;
   --ws-status-bg: #3c3c3c;
   --ws-status-fg: #d4d4d4;
@@ -303,6 +304,7 @@ html, body {
   box-sizing: border-box;
   padding-top: 2px;
   padding-right: 0.1em;
+  background: var(--ws-bg);
 }
 
 .ws-text {

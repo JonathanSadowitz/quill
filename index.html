@@ -25,6 +25,10 @@
       </div>
       <!-- Dropdown panels (hidden by default) -->
       <div id="ws-dropdown-file" class="ws-dropdown" role="menu" aria-label="File menu" hidden>
+        <button type="button" role="menuitem" data-action="open"><span class="ws-menuitem-label">Open…</span><span class="ws-menuitem-shortcut">Ctrl+O</span></button>
+        <button type="button" role="menuitem" data-action="save"><span class="ws-menuitem-label">Save</span><span class="ws-menuitem-shortcut">Ctrl+S</span></button>
+        <button type="button" role="menuitem" data-action="saveAs"><span class="ws-menuitem-label">Save As…</span><span class="ws-menuitem-shortcut">Ctrl+Shift+S</span></button>
+        <hr>
         <button type="button" role="menuitem" data-action="new"><span class="ws-menuitem-label">New</span><span class="ws-menuitem-shortcut">Ctrl+N</span></button>
         <hr>
         <button type="button" role="menuitem" data-action="exit"><span class="ws-menuitem-label">Exit</span><span class="ws-menuitem-shortcut">Alt+Q</span></button>
@@ -71,6 +75,17 @@
         <div class="ws-dialog-buttons">
           <button type="button" class="ws-dialog-btn ws-dialog-btn-primary" data-font-apply>Apply</button>
           <button type="button" class="ws-dialog-btn" data-font-cancel>Cancel</button>
+        </div>
+      </div>
+    </div>
+    <!-- Open file: discard current? -->
+    <div id="ws-open-dialog" class="ws-dialog-overlay" role="dialog" aria-label="Open file" aria-hidden="true">
+      <div class="ws-dialog-box">
+        <div class="ws-dialog-title">Discard current document?</div>
+        <p class="ws-dialog-message">Discard the current document and open another file?</p>
+        <div class="ws-dialog-buttons">
+          <button type="button" class="ws-dialog-btn ws-dialog-btn-primary" data-choice="discard">Discard</button>
+          <button type="button" class="ws-dialog-btn" data-choice="cancel">Cancel</button>
         </div>
       </div>
     </div>
