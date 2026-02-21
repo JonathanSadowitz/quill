@@ -107,7 +107,9 @@
     if (text && navigator.clipboard && navigator.clipboard.writeText) {
       try {
         await navigator.clipboard.writeText(text);
-      } catch (_) {}
+      } catch (_) {
+        console.warn('Copy failed (e.g. clipboard permission denied).');
+      }
     }
   }
 
@@ -119,7 +121,9 @@
         saveStateForUndo();
         deleteSelection();
         render();
-      } catch (_) {}
+      } catch (_) {
+        console.warn('Cut failed (e.g. clipboard permission denied).');
+      }
     }
   }
 
@@ -128,15 +132,27 @@
     try {
       const text = await navigator.clipboard.readText();
       if (!text) return;
+      const fullText = getFullText();
+      const { startRow, startCol, endRow, endCol } = selectionBounds();
+      const offsetStart = offsetFor(startRow, startCol);
+      const offsetEnd = offsetFor(endRow, endCol);
+      const newText = fullText.slice(0, offsetStart) + text + fullText.slice(offsetEnd);
+      const rawLines = newText.split('\n');
+      const newLines = wrapLongLines(rawLines);
+      const finalLines = newLines.length > 0 ? newLines : [''];
+      const targetOffset = offsetStart + text.length;
+      const pos = unwrappedOffsetToWrappedPos(rawLines, targetOffset);
       saveStateForUndo();
-      if (hasSelection()) deleteSelection();
-      for (let i = 0; i < text.length; i++) {
-        if (text[i] === '\n') doNewLine();
-        else doInsertChar(text[i]);
-      }
-      clearSelection();
+      lines = finalLines;
+      row = pos.row;
+      col = pos.col;
+      anchorRow = row;
+      anchorCol = col;
+      dirty = true;
       render();
-    } catch (_) {}
+    } catch (_) {
+      console.warn('Paste failed (e.g. clipboard permission denied).');
+    }
   }
 
   function saveStateForUndo() {
@@ -193,10 +209,11 @@
       else if (i > 0 && i % 8 === 0) s += '!';
       else s += '-';
     }
-    ruler.textContent = s;
+    if (ruler) ruler.textContent = s;
   }
 
   function render() {
+    if (!textEl) return;
     const frag = document.createDocumentFragment();
     const sel = hasSelection() ? selectionBounds() : null;
     for (let r = 0; r < lines.length; r++) {
@@ -243,6 +260,11 @@
       if (!content.trim()) return;
       out.push('<pre><code>' + escapeHtml(content.replace(/\n$/, '')) + '</code></pre>');
     }
+    function safeHref(url) {
+      const u = (url || '').trim().toLowerCase();
+      if (u.startsWith('javascript:') || u.startsWith('data:') || u.startsWith('vbscript:')) return '#';
+      return url;
+    }
     function inline(s) {
       return s
         .replace(/&/g, '&amp;')
@@ -251,7 +273,7 @@
         .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
         .replace(/\*([^*]+)\*/g, '<em>$1</em>')
         .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, url) => '<a href="' + escapeHtml(safeHref(url)) + '" target="_blank" rel="noopener">' + escapeHtml(label) + '</a>');
     }
     while (i < lines.length) {
       const line = lines[i];
@@ -379,10 +401,12 @@
   }
 
   function updateCursorPos() {
+    if (!cursorEl || !textEl) return;
     const ln = line();
     const lineEl = textEl.querySelector(`[data-line="${row}"]`);
     if (!lineEl) return;
     const wrap = textEl.parentElement;
+    if (!wrap) return;
     const wrapRect = wrap.getBoundingClientRect();
     const before = ln.slice(0, col);
     const measure = document.createElement('span');
@@ -415,8 +439,6 @@
     const wc = wordCount();
     const wcEl = $('ws-wordcount');
     if (wcEl) wcEl.textContent = wc === 1 ? '1 word' : wc + ' words';
-    const unsavedEl = $('ws-unsaved');
-    if (unsavedEl) unsavedEl.hidden = !dirty;
     updateWindowTitle();
   }
 
@@ -426,10 +448,75 @@
   }
 
   function updateWindowTitle() {
+    const basename = currentFilePath ? currentFilePath.replace(/^.*[/\\]/, '') : '';
+    const displayName = basename || 'Untitled';
     if (typeof document !== 'undefined' && document.title !== undefined) {
-      const name = currentFilePath ? currentFilePath.replace(/^.*[/\\]/, '') + ' – Quill' : 'Quill';
-      document.title = dirty ? '• ' + name : name;
+      const titleName = basename ? basename + ' – Quill' : 'Quill';
+      document.title = dirty ? '• ' + titleName : titleName;
     }
+    const docTitleEl = $('ws-doc-title');
+    if (docTitleEl) {
+      docTitleEl.textContent = dirty ? '• ' + displayName : displayName;
+    }
+  }
+
+  // ----- Last file (restore on startup) -----
+  const LAST_FILE_KEY = 'quill-last-file';
+
+  function getLastFile() {
+    try {
+      const raw = localStorage.getItem(LAST_FILE_KEY);
+      if (!raw) return null;
+      const o = JSON.parse(raw);
+      if (!o || typeof o.path !== 'string') return null;
+      return {
+        path: o.path,
+        row: typeof o.row === 'number' ? o.row : 0,
+        col: typeof o.col === 'number' ? o.col : 0
+      };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function saveLastFile() {
+    if (!currentFilePath) return;
+    try {
+      localStorage.setItem(LAST_FILE_KEY, JSON.stringify({
+        path: currentFilePath,
+        row,
+        col
+      }));
+    } catch (_) {}
+  }
+
+  async function openFileByPath(path, restoreRow, restoreCol) {
+    if (typeof window.__TAURI__ === 'undefined' || !window.__TAURI__.core || typeof window.__TAURI__.core.invoke !== 'function') {
+      return;
+    }
+    try {
+      const result = await window.__TAURI__.core.invoke('open_file_by_path', { path });
+      setFullText(result.content);
+      currentFilePath = result.path;
+      dirty = false;
+      updateWindowTitle();
+      if (typeof restoreRow === 'number' && typeof restoreCol === 'number') {
+        setCursor(restoreRow, restoreCol);
+      }
+    } catch (err) {
+      if (err && String(err).toLowerCase() !== 'cancelled') {
+        console.error(err);
+      }
+    }
+  }
+
+  async function restoreLastFile() {
+    const last = getLastFile();
+    if (!last || !last.path) return;
+    if (typeof window.__TAURI__ === 'undefined' || !window.__TAURI__.core || typeof window.__TAURI__.core.invoke !== 'function') {
+      return;
+    }
+    await openFileByPath(last.path, last.row, last.col);
   }
 
   async function doOpenFile() {
@@ -530,6 +617,9 @@
         updateWindowTitle();
       } catch (err) {
         console.error(err);
+        dirty = true;
+        updateWindowTitle();
+        alert('Save failed: ' + (err && err.toString ? err.toString() : String(err)));
       }
       return;
     }
@@ -548,6 +638,7 @@
     } catch (err) {
       if (err && String(err).toLowerCase() !== 'cancelled') {
         console.error(err);
+        alert('Save As failed: ' + (err && err.toString ? err.toString() : String(err)));
       }
     }
   }
@@ -798,6 +889,43 @@
     return out.length ? out : [''];
   }
 
+  /** Map character offset in unwrapped text (with \n) to (row, col) in wrapped line array. */
+  function unwrappedOffsetToWrappedPos(unwrappedLines, targetOffset) {
+    if (!unwrappedLines.length) return { row: 0, col: 0 };
+    const totalLen = unwrappedLines.reduce((acc, ln) => acc + ln.length, 0) + Math.max(0, unwrappedLines.length - 1);
+    const clamped = Math.min(targetOffset, totalLen);
+    let o = 0;
+    let unwrappedLineIdx = 0;
+    let unwrappedCol = 0;
+    for (let r = 0; r < unwrappedLines.length; r++) {
+      const len = unwrappedLines[r].length;
+      if (clamped <= o + len) {
+        unwrappedLineIdx = r;
+        unwrappedCol = Math.min(clamped - o, len);
+        break;
+      }
+      o += len + 1;
+    }
+    if (clamped >= totalLen) {
+      unwrappedLineIdx = unwrappedLines.length - 1;
+      unwrappedCol = (unwrappedLines[unwrappedLineIdx] || '').length;
+    }
+    let outRow = 0;
+    for (let i = 0; i < unwrappedLines.length; i++) {
+      const wlines = wrapLongLines([unwrappedLines[i]]);
+      if (i === unwrappedLineIdx) {
+        let colLeft = unwrappedCol;
+        for (let w = 0; w < wlines.length; w++) {
+          if (colLeft <= wlines[w].length) return { row: outRow + w, col: colLeft };
+          colLeft -= wlines[w].length;
+        }
+        return { row: outRow + wlines.length - 1, col: (wlines[wlines.length - 1] || '').length };
+      }
+      outRow += wlines.length;
+    }
+    return { row: outRow, col: 0 };
+  }
+
   function setFullText(s) {
     undoHistory = [];
     redoStack = [];
@@ -809,6 +937,14 @@
     anchorRow = 0;
     anchorCol = 0;
     dirty = false;
+    render();
+  }
+
+  function setCursor(r, c) {
+    row = Math.max(0, Math.min(r, lines.length - 1));
+    col = clampCol(row, c);
+    anchorRow = row;
+    anchorCol = col;
     render();
   }
 
@@ -928,7 +1064,12 @@
       } else if (idx !== -1) start = idx;
     } else {
       const before = searchText.slice(0, curOffset);
-      const idx = before.lastIndexOf(searchQuery);
+      let idx = before.lastIndexOf(searchQuery);
+      if (idx === -1 && curOffset < fullText.length) {
+        const after = searchText.slice(curOffset);
+        const wrapIdx = after.lastIndexOf(searchQuery);
+        if (wrapIdx !== -1) idx = curOffset + wrapIdx;
+      }
       if (idx !== -1) start = idx;
     }
     if (start === -1) return false;
@@ -1011,7 +1152,7 @@
   function closeFindDialog() {
     const dialog = $('ws-find-dialog');
     if (dialog) dialog.setAttribute('aria-hidden', 'true');
-    textEl.focus();
+    if (textEl) textEl.focus();
   }
 
   // ----- Zoom -----
@@ -1232,7 +1373,7 @@
   };
 
   // Global shortcuts: work even when editor doesn't have focus (capture phase)
-  const MENU_ORDER = ['file', 'edit', 'view'];
+  const MENU_ORDER = ['file', 'edit', 'view', 'help'];
   let menuBarFocused = false;
   let focusedMenuIndex = 0;
 
@@ -1269,8 +1410,15 @@
       const exitDialog = $('ws-exit-dialog');
       const openDialog = $('ws-open-dialog');
       const findDialog = $('ws-find-dialog');
+      const aboutDialog = $('ws-about-dialog');
       if (fontDialog && fontDialog.getAttribute('aria-hidden') === 'false') return;
       if (themeDialog && themeDialog.getAttribute('aria-hidden') === 'false') return;
+      if (aboutDialog && aboutDialog.getAttribute('aria-hidden') === 'false') {
+        closeAboutDialog();
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       if (newDialog && newDialog.getAttribute('aria-hidden') === 'false') return;
       if (exitDialog && exitDialog.getAttribute('aria-hidden') === 'false') return;
       if (openDialog && openDialog.getAttribute('aria-hidden') === 'false') return;
@@ -1295,7 +1443,8 @@
     const fontDialogOpen = $('ws-font-dialog') && $('ws-font-dialog').getAttribute('aria-hidden') === 'false';
     const themeDialogOpen = $('ws-theme-dialog') && $('ws-theme-dialog').getAttribute('aria-hidden') === 'false';
     const findDialogOpen = $('ws-find-dialog') && $('ws-find-dialog').getAttribute('aria-hidden') === 'false';
-    const modalOpen = newDialogOpen || exitDialogOpen || openDialogOpen || fontDialogOpen || themeDialogOpen || findDialogOpen;
+    const aboutDialogOpen = $('ws-about-dialog') && $('ws-about-dialog').getAttribute('aria-hidden') === 'false';
+    const modalOpen = newDialogOpen || exitDialogOpen || openDialogOpen || fontDialogOpen || themeDialogOpen || findDialogOpen || aboutDialogOpen;
 
     // When a dropdown is open: Arrow Up/Down navigate items; Left/Right switch menus; Enter executes
     if (!modalOpen) {
@@ -1530,9 +1679,12 @@
   textEl.addEventListener('contextmenu', (e) => e.preventDefault());
 
   // Cursor position when scrolling
-  textEl.parentElement.addEventListener('scroll', () => {
-    if (textEl.querySelector(`[data-line="${row}"]`)) updateCursorPos();
-  });
+  const editorWrap = textEl && textEl.parentElement;
+  if (editorWrap) {
+    editorWrap.addEventListener('scroll', () => {
+      if (textEl && textEl.querySelector(`[data-line="${row}"]`)) updateCursorPos();
+    });
+  }
 
   // ----- Theme -----
   const THEME_STORAGE_KEY = 'quill-theme';
@@ -1625,6 +1777,49 @@
     });
   })();
 
+  // ----- About -----
+  const APP_VERSION_FALLBACK = '0.1.0';
+
+  function openAboutDialog() {
+    const dialog = $('ws-about-dialog');
+    const versionEl = $('ws-about-version');
+    if (!dialog || !versionEl) return;
+    const setVersion = (name, version) => {
+      versionEl.textContent = name + ' ' + version;
+    };
+    if (typeof window.__TAURI__ !== 'undefined' && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === 'function') {
+      window.__TAURI__.core.invoke('get_app_info').then((info) => {
+        setVersion(info.name, info.version);
+      }).catch(() => {
+        setVersion('Quill', APP_VERSION_FALLBACK);
+      });
+    } else {
+      setVersion('Quill', APP_VERSION_FALLBACK);
+    }
+    dialog.setAttribute('aria-hidden', 'false');
+    const okBtn = dialog.querySelector('[data-about-ok]');
+    if (okBtn) okBtn.focus();
+  }
+
+  function closeAboutDialog() {
+    const dialog = $('ws-about-dialog');
+    if (dialog) dialog.setAttribute('aria-hidden', 'true');
+    textEl.focus();
+  }
+
+  (function initAboutDialog() {
+    const dialog = $('ws-about-dialog');
+    if (!dialog) return;
+    const okBtn = dialog.querySelector('[data-about-ok]');
+    if (okBtn) okBtn.addEventListener('click', closeAboutDialog);
+    dialog.addEventListener('click', (e) => { if (e.target === dialog) closeAboutDialog(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && dialog.getAttribute('aria-hidden') === 'false') {
+        closeAboutDialog();
+      }
+    });
+  })();
+
   (function initFindDialog() {
     const dialog = $('ws-find-dialog');
     if (!dialog) return;
@@ -1654,7 +1849,8 @@
   const dropdowns = {
     file: $('ws-dropdown-file'),
     edit: $('ws-dropdown-edit'),
-    view: $('ws-dropdown-view')
+    view: $('ws-dropdown-view'),
+    help: $('ws-dropdown-help')
   };
 
   function closeAllMenus() {
@@ -1696,7 +1892,8 @@
     zoomReset: () => zoomReset(),
     togglePreview: () => { togglePreview(); closeAllMenus(); },
     theme: () => { openThemeDialog(); closeAllMenus(); },
-    font: () => { openFontDialog(); closeAllMenus(); }
+    font: () => { openFontDialog(); closeAllMenus(); },
+    about: () => { openAboutDialog(); closeAllMenus(); }
   };
 
   let menuCloseTimeout = null;
@@ -1742,7 +1939,7 @@
       if (fn) fn();
       // Return focus to the editor unless the action opened a modal (New/Exit),
       // so the modal can keep focus for keyboard navigation (Discard/Cancel).
-      if (action !== 'new' && action !== 'exit' && action !== 'open') {
+      if (action !== 'new' && action !== 'exit' && action !== 'open' && action !== 'about') {
         textEl.focus();
       }
     });
@@ -1763,6 +1960,10 @@
     closeAllMenus();
   });
 
+  // Persist last file (path + cursor) when leaving so we can reopen on next launch
+  window.addEventListener('beforeunload', saveLastFile);
+  window.addEventListener('pagehide', saveLastFile);
+
   // Init
   const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
   if (savedTheme) applyTheme(savedTheme);
@@ -1771,4 +1972,10 @@
   renderRuler();
   render();
   textEl.focus();
+
+  // Restore last file on startup (Tauri only; in browser we can't open by path)
+  (async () => {
+    await restoreLastFile();
+    if (textEl) textEl.focus();
+  })();
 })();

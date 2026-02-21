@@ -18,9 +18,10 @@
           <div class="ws-menu-item" data-menu="file" aria-haspopup="true" aria-expanded="false">File</div>
           <div class="ws-menu-item" data-menu="edit" aria-haspopup="true" aria-expanded="false">Edit</div>
           <div class="ws-menu-item" data-menu="view" aria-haspopup="true" aria-expanded="false">View</div>
+          <div class="ws-menu-item" data-menu="help" aria-haspopup="true" aria-expanded="false">Help</div>
         </div>
+        <span id="ws-doc-title" class="ws-doc-title" aria-label="Document title">Untitled</span>
         <div class="ws-menubar-right">
-          <span id="ws-unsaved" class="ws-status-unsaved" hidden>•</span>
           <span id="ws-wordcount" class="ws-status-wordcount">0 words</span>
           <span id="ws-zoom-value" class="ws-status-zoom">100%</span>
         </div>
@@ -56,6 +57,9 @@
         <hr>
         <button type="button" role="menuitem" data-action="theme"><span class="ws-menuitem-label">Theme…</span></button>
         <button type="button" role="menuitem" data-action="font"><span class="ws-menuitem-label">Font…</span></button>
+      </div>
+      <div id="ws-dropdown-help" class="ws-dropdown" role="menu" aria-label="Help menu" hidden>
+        <button type="button" role="menuitem" data-action="about"><span class="ws-menuitem-label">About Quill</span></button>
       </div>
     </header>
     <!-- Ruler line -->
@@ -169,6 +173,18 @@
           <button type="button" class="ws-dialog-btn" data-find="replace">Replace</button>
           <button type="button" class="ws-dialog-btn" data-find="replaceAll">Replace All</button>
           <button type="button" class="ws-dialog-btn ws-dialog-btn-primary" data-find="close">Close</button>
+        </div>
+      </div>
+    </div>
+    <!-- About -->
+    <div id="ws-about-dialog" class="ws-dialog-overlay" role="dialog" aria-label="About Quill" aria-hidden="true">
+      <div class="ws-dialog-box ws-dialog-about">
+        <div class="ws-dialog-title">About Quill</div>
+        <p id="ws-about-version" class="ws-dialog-about-version">Quill 0.1.0</p>
+        <p class="ws-dialog-message">A Markdown word processor. MIT License.</p>
+        <p class="ws-dialog-about-credit">Quill icon by EX Liberus, from <a href="https://thenounproject.com" target="_blank" rel="noopener">Noun Project</a> (CC BY 3.0).</p>
+        <div class="ws-dialog-buttons">
+          <button type="button" class="ws-dialog-btn ws-dialog-btn-primary" data-about-ok>OK</button>
         </div>
       </div>
     </div>

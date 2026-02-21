@@ -136,9 +136,6 @@ html, body {
 }
 
 /* Word count and zoom (in menubar top right) */
-.ws-status-unsaved {
-  opacity: 0.9;
-}
 .ws-status-wordcount,
 .ws-status-zoom {
   white-space: nowrap;
@@ -294,6 +291,21 @@ html, body {
   font-variant-numeric: tabular-nums;
   font-size: 0.85rem;
   color: var(--ws-toolbar-fg);
+}
+
+/* Document title – centered in menubar (filename or "Untitled", • when unsaved) */
+.ws-doc-title {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--ws-menubar-fg);
+  opacity: 0.9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: none;
+  padding: 0 0.5rem;
 }
 
 /* Ruler – 80 cols, centered */
@@ -542,6 +554,26 @@ html, body {
   user-select: none;
 }
 .ws-dialog-checkbox { cursor: default; }
+
+/* About dialog */
+.ws-dialog-about .ws-dialog-about-version {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+.ws-dialog-about .ws-dialog-about-credit {
+  margin: 0 0 1.25rem 0;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: var(--ws-fg);
+}
+.ws-dialog-about .ws-dialog-about-credit a {
+  color: var(--ws-menubar-hover);
+  text-decoration: none;
+}
+.ws-dialog-about .ws-dialog-about-credit a:hover {
+  text-decoration: underline;
+}
 .ws-dialog-buttons-find {
   margin-top: 1rem;
   flex-wrap: wrap;
