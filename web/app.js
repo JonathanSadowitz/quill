@@ -6,7 +6,16 @@
 (function () {
   'use strict';
 
-  const COLS = 80;
+  const ALLOWED_WRAP_WIDTHS = [72, 80, 100, 120];
+  const DEFAULT_WRAP_WIDTH = 80;
+  const WRAP_WIDTH_STORAGE_KEY = 'quill-wrap-width';
+  let wrapWidth = (function () {
+    try {
+      const v = parseInt(localStorage.getItem(WRAP_WIDTH_STORAGE_KEY), 10);
+      if (ALLOWED_WRAP_WIDTHS.indexOf(v) !== -1) return v;
+    } catch (_) {}
+    return DEFAULT_WRAP_WIDTH;
+  })();
   const TAB = 8;
 
   let lines = [''];
@@ -201,7 +210,7 @@
   }
 
   function renderRuler() {
-    const left = 1, right = COLS;
+    const left = 1, right = wrapWidth;
     let s = '';
     for (let i = 0; i < right; i++) {
       if (i === 0) s += 'L';
@@ -512,6 +521,9 @@
       if (err && String(err).toLowerCase() !== 'cancelled') {
         console.error(err);
       }
+      try {
+        localStorage.removeItem(LAST_FILE_KEY);
+      } catch (_) {}
     }
   }
 
@@ -715,11 +727,11 @@
     }
   }
 
-  /* Find break point for word wrap: last space before COLS, or COLS if no space (long word) */
+  /* Find break point for word wrap: last space before wrapWidth, or wrapWidth if no space (long word) */
   function wrapBreakPoint(str) {
-    if (str.length <= COLS) return -1;
-    const lastSpace = str.lastIndexOf(' ', COLS);
-    return lastSpace > 0 ? lastSpace : COLS;
+    if (str.length <= wrapWidth) return -1;
+    const lastSpace = str.lastIndexOf(' ', wrapWidth);
+    return lastSpace > 0 ? lastSpace : wrapWidth;
   }
 
   function doInsertChar(ch) {
@@ -727,7 +739,7 @@
     setLine(row, ln.slice(0, col) + ch + ln.slice(col));
     col++;
     let current = lines[row] || '';
-    while (current.length > COLS) {
+    while (current.length > wrapWidth) {
       const br = wrapBreakPoint(current);
       const overflowRaw = current.slice(br);
       const overflow = overflowRaw.trimStart();
@@ -877,12 +889,12 @@
       } else {
         let rest = ln;
         while (rest.length > 0) {
-          if (rest.length <= COLS) {
+          if (rest.length <= wrapWidth) {
             out.push(rest);
             break;
           }
-          const br = rest.lastIndexOf(' ', COLS);
-          const cut = br > 0 ? br : COLS;
+          const br = rest.lastIndexOf(' ', wrapWidth);
+          const cut = br > 0 ? br : wrapWidth;
           out.push(rest.slice(0, cut).trimEnd());
           rest = rest.slice(cut).trimStart();
         }
@@ -1032,6 +1044,7 @@
   }
 
   function posForOffset(offset) {
+    if (lines.length === 0) return { row: 0, col: 0 };
     let off = 0;
     for (let r = 0; r < lines.length; r++) {
       const len = (lines[r] || '').length;
@@ -1136,6 +1149,7 @@
     saveStateForUndo();
     setFullText(parts.join(''));
     dirty = true;
+    render();
   }
 
   function openFindDialog() {
@@ -1414,8 +1428,15 @@
       const openDialog = $('ws-open-dialog');
       const findDialog = $('ws-find-dialog');
       const aboutDialog = $('ws-about-dialog');
+      const wrapDialog = $('ws-wrap-dialog');
       if (fontDialog && fontDialog.getAttribute('aria-hidden') === 'false') return;
       if (themeDialog && themeDialog.getAttribute('aria-hidden') === 'false') return;
+      if (wrapDialog && wrapDialog.getAttribute('aria-hidden') === 'false') {
+        closeWrapWidthDialog();
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       if (aboutDialog && aboutDialog.getAttribute('aria-hidden') === 'false') {
         closeAboutDialog();
         e.preventDefault();
@@ -1447,7 +1468,8 @@
     const themeDialogOpen = $('ws-theme-dialog') && $('ws-theme-dialog').getAttribute('aria-hidden') === 'false';
     const findDialogOpen = $('ws-find-dialog') && $('ws-find-dialog').getAttribute('aria-hidden') === 'false';
     const aboutDialogOpen = $('ws-about-dialog') && $('ws-about-dialog').getAttribute('aria-hidden') === 'false';
-    const modalOpen = newDialogOpen || exitDialogOpen || openDialogOpen || fontDialogOpen || themeDialogOpen || findDialogOpen || aboutDialogOpen;
+    const wrapDialogOpen = $('ws-wrap-dialog') && $('ws-wrap-dialog').getAttribute('aria-hidden') === 'false';
+    const modalOpen = newDialogOpen || exitDialogOpen || openDialogOpen || fontDialogOpen || themeDialogOpen || findDialogOpen || aboutDialogOpen || wrapDialogOpen;
 
     // When a dropdown is open: Arrow Up/Down navigate items; Left/Right switch menus; Enter executes
     if (!modalOpen) {
@@ -1608,12 +1630,6 @@
       e.preventDefault();
       e.stopPropagation();
       togglePreview();
-      return;
-    }
-    if (key === 'F11') {
-      e.preventDefault();
-      e.stopPropagation();
-      toggleFullscreen();
       return;
     }
     if (ctrl && key === 'z' && !shift) {
@@ -1792,8 +1808,56 @@
     });
   })();
 
+  // ----- Wrap width -----
+  function applyWrapWidth(val) {
+    const n = parseInt(val, 10);
+    if (ALLOWED_WRAP_WIDTHS.indexOf(n) === -1) return;
+    wrapWidth = n;
+    document.documentElement.style.setProperty('--ws-cols', String(wrapWidth));
+    setFullText(getFullText());
+    renderRuler();
+    render();
+    try {
+      localStorage.setItem(WRAP_WIDTH_STORAGE_KEY, String(wrapWidth));
+    } catch (_) {}
+  }
+
+  function openWrapWidthDialog() {
+    const dialog = $('ws-wrap-dialog');
+    const select = $('ws-wrap-select');
+    if (!dialog || !select) return;
+    select.value = String(wrapWidth);
+    dialog.setAttribute('aria-hidden', 'false');
+    select.focus();
+  }
+
+  function closeWrapWidthDialog() {
+    const dialog = $('ws-wrap-dialog');
+    if (dialog) dialog.setAttribute('aria-hidden', 'true');
+    if (textEl) textEl.focus();
+  }
+
+  (function initWrapWidthDialog() {
+    const dialog = $('ws-wrap-dialog');
+    const select = $('ws-wrap-select');
+    if (!dialog || !select) return;
+    const applyBtn = dialog.querySelector('[data-wrap-apply]');
+    const cancelBtn = dialog.querySelector('[data-wrap-cancel]');
+    if (applyBtn) applyBtn.addEventListener('click', () => {
+      applyWrapWidth(select.value);
+      closeWrapWidthDialog();
+    });
+    if (cancelBtn) cancelBtn.addEventListener('click', closeWrapWidthDialog);
+    dialog.addEventListener('click', (e) => { if (e.target === dialog) closeWrapWidthDialog(); });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && dialog.getAttribute('aria-hidden') === 'false') {
+        closeWrapWidthDialog();
+      }
+    });
+  })();
+
   // ----- About -----
-  const APP_VERSION_FALLBACK = '0.1.0';
+  const APP_VERSION_FALLBACK = '0.3.0';
 
   function openAboutDialog() {
     const dialog = $('ws-about-dialog');
@@ -1907,6 +1971,7 @@
     fullscreen: () => { toggleFullscreen(); closeAllMenus(); },
     theme: () => { openThemeDialog(); closeAllMenus(); },
     font: () => { openFontDialog(); closeAllMenus(); },
+    wrapWidth: () => { openWrapWidthDialog(); closeAllMenus(); },
     about: () => { openAboutDialog(); closeAllMenus(); }
   };
 
@@ -1953,7 +2018,7 @@
       if (fn) fn();
       // Return focus to the editor unless the action opened a modal (New/Exit),
       // so the modal can keep focus for keyboard navigation (Discard/Cancel).
-      if (action !== 'new' && action !== 'exit' && action !== 'open' && action !== 'about') {
+      if (action !== 'new' && action !== 'exit' && action !== 'open' && action !== 'about' && action !== 'wrapWidth') {
         textEl.focus();
       }
     });
@@ -1979,6 +2044,7 @@
   window.addEventListener('pagehide', saveLastFile);
 
   // Init
+  document.documentElement.style.setProperty('--ws-cols', String(wrapWidth));
   const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
   if (savedTheme) applyTheme(savedTheme);
   const savedFont = localStorage.getItem(FONT_STORAGE_KEY);

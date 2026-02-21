@@ -59,6 +59,7 @@
         <hr>
         <button type="button" role="menuitem" data-action="theme"><span class="ws-menuitem-label">Theme…</span></button>
         <button type="button" role="menuitem" data-action="font"><span class="ws-menuitem-label">Font…</span></button>
+        <button type="button" role="menuitem" data-action="wrapWidth"><span class="ws-menuitem-label">Wrap width…</span></button>
       </div>
       <div id="ws-dropdown-help" class="ws-dropdown" role="menu" aria-label="Help menu" hidden>
         <button type="button" role="menuitem" data-action="about"><span class="ws-menuitem-label">About Quill</span></button>
@@ -115,6 +116,25 @@
         <div class="ws-dialog-buttons">
           <button type="button" class="ws-dialog-btn ws-dialog-btn-primary" data-font-apply>Apply</button>
           <button type="button" class="ws-dialog-btn" data-font-cancel>Cancel</button>
+        </div>
+      </div>
+    </div>
+    <!-- Wrap width -->
+    <div id="ws-wrap-dialog" class="ws-dialog-overlay" role="dialog" aria-label="Wrap width" aria-hidden="true">
+      <div class="ws-dialog-box">
+        <div class="ws-dialog-title">Wrap width</div>
+        <p class="ws-dialog-message">Line wrap column. Ruler and word wrap use this value.</p>
+        <div class="ws-dialog-font-row">
+          <select id="ws-wrap-select" class="ws-font-select" aria-label="Wrap width">
+            <option value="72">72 columns</option>
+            <option value="80">80 columns</option>
+            <option value="100">100 columns</option>
+            <option value="120">120 columns</option>
+          </select>
+        </div>
+        <div class="ws-dialog-buttons">
+          <button type="button" class="ws-dialog-btn ws-dialog-btn-primary" data-wrap-apply>Apply</button>
+          <button type="button" class="ws-dialog-btn" data-wrap-cancel>Cancel</button>
         </div>
       </div>
     </div>

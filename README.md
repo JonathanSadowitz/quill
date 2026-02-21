@@ -9,7 +9,7 @@ A **Markdown** word processor that runs as a native app (Tauri) on Linux and Win
 ### Editing
 
 - **Markdown** — Headings (`#`, `##`, `###`), **bold**, *italic*, `code`, lists, links, and fenced code blocks. Preview renders standard Markdown.
-- **80-column layout** — Word wrap at 80 columns; no horizontal scrollbar. A ruler shows column markers (L, R, and every 8 columns).
+- **Configurable wrap** — View → Wrap width… to choose **72**, **80**, **100**, or **120** columns. Word wrap and ruler follow; choice is saved. Default 80.
 - **Undo / Redo** — Ctrl+Z and Ctrl+Shift+Z (or Ctrl+Y), up to 500 steps. History is cleared on New or Open.
 - **Selection & clipboard** — Shift+Arrow or drag to select; Cut (Ctrl+X), Copy (Ctrl+C), Paste (Ctrl+V), Select All (Ctrl+A). Typing or Delete replaces the selection.
 - **Find & Replace** — Edit → Find… or Ctrl+F. Find Next/Previous, Replace, Replace All; optional case-sensitive search.
@@ -92,6 +92,7 @@ cargo tauri icon app-icon.png
 | **Ctrl++** / **Ctrl+=** / **Ctrl+-** / **Ctrl+0** | Zoom in / Zoom out / Reset zoom |
 | **View → Theme…** | Change theme (saved) |
 | **View → Font…** | Change font (saved) |
+| **View → Wrap width…** | 72 / 80 / 100 / 120 columns (saved) |
 
 **Movement:** Arrow keys, Home/End (line), Ctrl+Home/End (document), Page Up/Down. Shift+Arrow extends selection.  
 **Editing:** Backspace, Delete, Enter, Tab.  
