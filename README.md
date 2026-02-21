@@ -1,6 +1,6 @@
 # Quill
 
-A **Markdown** word processor that runs as a native app (Tauri) on Linux and Windows, or in the browser. Write in plain text with 80-column layout, live Markdown preview, themes, and keyboard-first shortcuts.
+A **Markdown** word processor that runs as a native app (Tauri) on Linux and Windows. Write in plain text with 80-column layout, live Markdown preview, themes, and keyboard-first shortcuts.
 
 ---
 
@@ -20,11 +20,12 @@ A **Markdown** word processor that runs as a native app (Tauri) on Linux and Win
 - **Theme** — View → Theme… to choose **Dark**, **Light**, **Synthwave**, or **Green terminal**. Choice is saved (localStorage).
 - **Font** — View → Font… to choose editor and UI font: IBM Plex Mono, Liberation Mono, Courier New, Source Serif 4, Georgia, or System UI. Choice is saved.
 - **Zoom** — Ctrl++ / Ctrl+- / Ctrl+0 (or Ctrl+= for zoom in). Zoom level is saved.
-- **Status line** — Unsaved indicator (•), word count, and zoom percentage. Window title shows • when there are unsaved changes.
+- **Document title** — Filename (or “Untitled”) and unsaved indicator (•) in the centre of the menu bar; word count and zoom on the right.
+- **Fullscreen** — View → Fullscreen or F11 to toggle.
 
 ### Menus & shortcuts
 
-- **Menu bar** — File, Edit, View. Click or hover to open; every action has a keyboard shortcut shown in the menu. Keyboard: Alt to focus menu bar, Arrow keys to move, Enter to run.
+- **Menu bar** — File, Edit, View, Help. Click or hover to open; every action has a keyboard shortcut shown in the menu. Keyboard: Alt to focus menu bar, Arrow keys to move, Enter to run.
 - **Discard prompts** — New, Open, and Exit ask to discard the current document if it has unsaved changes.
 
 ---
@@ -72,19 +73,6 @@ cargo tauri icon app-icon.png
 
 ---
 
-## Web (browser) fallback
-
-Open `web/index.html` in a browser or serve it:
-
-```bash
-python -m http.server 8080
-# Then open http://localhost:8080
-```
-
-For **open/save from disk** in the browser, Chrome or Edge work best (File System Access API). Other browsers use the file picker and download.
-
----
-
 ## Key commands
 
 | Keys | Action |
@@ -100,6 +88,7 @@ For **open/save from disk** in the browser, Chrome or Edge work best (File Syste
 | **Ctrl+A** | Select All |
 | **Ctrl+F** | Find… |
 | **Ctrl+P** | Toggle Markdown preview |
+| **F11** | Toggle fullscreen |
 | **Ctrl++** / **Ctrl+=** / **Ctrl+-** / **Ctrl+0** | Zoom in / Zoom out / Reset zoom |
 | **View → Theme…** | Change theme (saved) |
 | **View → Font…** | Change font (saved) |
@@ -114,8 +103,8 @@ For **open/save from disk** in the browser, Chrome or Edge work best (File Syste
 
 - Default theme is Dark; you can switch to Light, Synthwave, or Green terminal.
 - 80-column editor with word wrap and a ruler (L, R, and 8-column markers); no horizontal scrollbar.
-- Status line: unsaved indicator (•), word count, zoom percentage.
-- In the native app, the window starts maximized; layout fills the viewport.
+- Menu bar: document title (filename or “Untitled”) in the centre with • when unsaved; word count and zoom on the right.
+- The window starts maximized; layout fills the viewport.
 
 ## License
 

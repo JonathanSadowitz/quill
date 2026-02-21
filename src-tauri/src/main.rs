@@ -4,6 +4,7 @@
 use serde::Serialize;
 use std::fs;
 use std::io;
+use tauri::Manager;
 
 #[derive(Serialize)]
 struct OpenResult {
@@ -72,6 +73,19 @@ fn save_file(path: String, content: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn toggle_fullscreen(app: tauri::AppHandle) -> Result<bool, String> {
+    let window = app
+        .get_webview_window("main")
+        .ok_or_else(|| "No main window".to_string())?;
+    let current = window.is_fullscreen().unwrap_or(false);
+    let next = !current;
+    if let Err(e) = window.set_fullscreen(next) {
+        return Err(e.to_string());
+    }
+    Ok(next)
+}
+
+#[tauri::command]
 fn save_file_as(content: String) -> Result<String, String> {
     let path = rfd::FileDialog::new()
         .add_filter("Markdown", &["md", "markdown", "txt"])
@@ -87,7 +101,7 @@ fn main() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![exit_app, open_file, open_file_by_path, save_file, save_file_as, get_app_info])
+        .invoke_handler(tauri::generate_handler![exit_app, open_file, open_file_by_path, save_file, save_file_as, get_app_info, toggle_fullscreen])
         .run(tauri::generate_context!())
         .expect("error while running Quill");
 }

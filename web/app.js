@@ -1,6 +1,6 @@
 /**
- * Quill – local Markdown word processor (no file I/O).
- * Compact shortcuts: ^X = Ctrl+X, M-X = Alt+X.
+ * Quill – Markdown word processor (Tauri native app).
+ * Shortcuts: ^X = Ctrl+X, M-X = Alt+X.
  */
 
 (function () {
@@ -357,6 +357,11 @@
     setPreviewMode(!previewMode);
   }
 
+  function toggleFullscreen() {
+    if (typeof window.__TAURI__ === 'undefined' || !window.__TAURI__.core || typeof window.__TAURI__.core.invoke !== 'function') return;
+    window.__TAURI__.core.invoke('toggle_fullscreen').catch(() => {});
+  }
+
   // Get (row, col) from a mouse event for click-to-position cursor
   function getLineSpanAt(clientX, clientY) {
     const wrap = textEl.parentElement;
@@ -513,9 +518,6 @@
   async function restoreLastFile() {
     const last = getLastFile();
     if (!last || !last.path) return;
-    if (typeof window.__TAURI__ === 'undefined' || !window.__TAURI__.core || typeof window.__TAURI__.core.invoke !== 'function') {
-      return;
-    }
     await openFileByPath(last.path, last.row, last.col);
   }
 
@@ -949,11 +951,7 @@
   }
 
   function doExit() {
-    if (typeof window.__TAURI__ !== 'undefined' && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === 'function') {
-      window.__TAURI__.core.invoke('exit_app').catch(() => {});
-    } else {
-      window.close();
-    }
+    if (window.__TAURI__?.core?.invoke) window.__TAURI__.core.invoke('exit_app').catch(() => {});
   }
 
   async function quit() {
@@ -1251,6 +1249,11 @@
     if (ctrl && key === '0') {
       e.preventDefault();
       zoomReset();
+      return;
+    }
+    if (key === 'F11') {
+      e.preventDefault();
+      toggleFullscreen();
       return;
     }
 
@@ -1595,10 +1598,22 @@
       zoomReset();
       return;
     }
+    if (key === 'F11') {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleFullscreen();
+      return;
+    }
     if (ctrl && key === 'p') {
       e.preventDefault();
       e.stopPropagation();
       togglePreview();
+      return;
+    }
+    if (key === 'F11') {
+      e.preventDefault();
+      e.stopPropagation();
+      toggleFullscreen();
       return;
     }
     if (ctrl && key === 'z' && !shift) {
@@ -1787,12 +1802,10 @@
     const setVersion = (name, version) => {
       versionEl.textContent = name + ' ' + version;
     };
-    if (typeof window.__TAURI__ !== 'undefined' && window.__TAURI__.core && typeof window.__TAURI__.core.invoke === 'function') {
+    if (window.__TAURI__?.core?.invoke) {
       window.__TAURI__.core.invoke('get_app_info').then((info) => {
         setVersion(info.name, info.version);
-      }).catch(() => {
-        setVersion('Quill', APP_VERSION_FALLBACK);
-      });
+      }).catch(() => setVersion('Quill', APP_VERSION_FALLBACK));
     } else {
       setVersion('Quill', APP_VERSION_FALLBACK);
     }
@@ -1891,6 +1904,7 @@
     zoomOut: () => zoomOut(),
     zoomReset: () => zoomReset(),
     togglePreview: () => { togglePreview(); closeAllMenus(); },
+    fullscreen: () => { toggleFullscreen(); closeAllMenus(); },
     theme: () => { openThemeDialog(); closeAllMenus(); },
     font: () => { openFontDialog(); closeAllMenus(); },
     about: () => { openAboutDialog(); closeAllMenus(); }
@@ -1973,7 +1987,7 @@
   render();
   textEl.focus();
 
-  // Restore last file on startup (Tauri only; in browser we can't open by path)
+  // Restore last file on startup
   (async () => {
     await restoreLastFile();
     if (textEl) textEl.focus();
