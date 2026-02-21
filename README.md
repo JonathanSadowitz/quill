@@ -22,6 +22,11 @@ A **Markdown** word processor that runs as a native app (Tauri) on Linux and Win
 - **Zoom** — Ctrl++ / Ctrl+- / Ctrl+0 (or Ctrl+= for zoom in). Zoom level is saved.
 - **Document title** — Filename (or “Untitled”) and unsaved indicator (•) in the centre of the menu bar; word count and zoom on the right.
 - **Fullscreen** — View → Fullscreen or F11 to toggle.
+- **About** — Help → About Quill shows app version and license.
+
+### Session
+
+- **Restore last file** — On startup, Quill reopens the last opened file and restores the cursor position. The path and position are saved when you open/save a file or when the window is closed or hidden.
 
 ### Menus & shortcuts
 
@@ -93,6 +98,7 @@ cargo tauri icon app-icon.png
 | **View → Theme…** | Change theme (saved) |
 | **View → Font…** | Change font (saved) |
 | **View → Wrap width…** | 72 / 80 / 100 / 120 columns (saved) |
+| **Help → About Quill** | App version and license |
 
 **Movement:** Arrow keys, Home/End (line), Ctrl+Home/End (document), Page Up/Down. Shift+Arrow extends selection.  
 **Editing:** Backspace, Delete, Enter, Tab.  
